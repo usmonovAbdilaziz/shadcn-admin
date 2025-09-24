@@ -128,7 +128,7 @@
 
 ### Refactor
 
-- optimize states in users/tasks context (#71)
+- optimize states in users/about context (#71)
 
 ## v1.0.2 (2024-12-25)
 
