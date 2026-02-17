@@ -6,6 +6,14 @@ export const Route = createFileRoute('/_authenticated/business/users')({
 })
 
 function RouteComponent() {
+    const user =JSON.parse(localStorage.getItem("user")!)
+  if(user){
+    if(user.userType !== 'BUSINESS') {
+      window.location.href = '/admin'
+    }
+  }else{
+      window.location.href = '/'
+  }
   return (
     <div>
       <StaffPage />

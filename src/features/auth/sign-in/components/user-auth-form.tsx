@@ -59,10 +59,14 @@ export function UserAuthForm({
         localStorage.setItem('token', data.data.token)
         localStorage.setItem('user', JSON.stringify(data.data.user))
         const user = data.data.user
-        if(user.role === 'business') {
+        if(user.userType === 'BUSINESS') {
           navigate({ to: '/business', replace: true })
+        }else if(user.userType==="ADMIN"){
+          navigate({to:'/admin',replace:true})
         }
         console.log(data.data)
+        console.log();
+        
       },
       onError: (error) => {
         setIsLoading(false)

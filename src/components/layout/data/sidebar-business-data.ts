@@ -1,7 +1,7 @@
 import { LayoutDashboard, Users, ServerCog, Table } from 'lucide-react'
 import { type SidebarData } from '../types'
 
-export const sidebarData: SidebarData = {
+export const sidebarBusinessData: SidebarData = {
   user: {
     name: userFunc().fullName,
     email: userFunc().email,
@@ -33,7 +33,7 @@ export const sidebarData: SidebarData = {
           url: '/business/service',
           icon: ServerCog,
         },
-        {
+         {
           title: 'Tables',
           url: '/business/table',
           icon: Table,

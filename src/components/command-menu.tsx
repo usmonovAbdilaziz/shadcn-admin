@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, ChevronRight, Laptop, Moon, Sun } from 'lucide-react'
 import { useSearch } from '@/context/search-provider'
@@ -12,10 +12,23 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { sidebarData } from './layout/data/sidebar-data'
+import { sidebarBusinessData } from '@/components/layout/data/sidebar-business-data'
 import { ScrollArea } from './ui/scroll-area'
+import { SidebarData } from './layout/types'
+import { sidebarAdminData } from '@/components/layout/data/sidebar-admin-data'
 
 export function CommandMenu() {
+  const [sidebarData,setSidebarData]=useState<SidebarData>()
+  const user =JSON.parse(localStorage.getItem("user")!)
+  useEffect(()=>{
+    if(user){
+      if(user.userType == 'BUSINESS') {
+        setSidebarData(sidebarBusinessData)
+      }else if(user.userType==="ADMIN"){
+        setSidebarData(sidebarAdminData)
+      }
+    }
+  },[user])
   const navigate = useNavigate()
   const { setTheme } = useTheme()
   const { open, setOpen } = useSearch()
@@ -34,7 +47,7 @@ export function CommandMenu() {
       <CommandList>
         <ScrollArea type='hover' className='h-72 pe-1'>
           <CommandEmpty>No results found.</CommandEmpty>
-          {sidebarData.navGroups.map((group) => (
+          {sidebarData?.navGroups.map((group) => (
             <CommandGroup key={group.title} heading={group.title}>
               {group.items.map((navItem, i) => {
                 if (navItem.url)
