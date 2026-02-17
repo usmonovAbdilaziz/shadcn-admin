@@ -13,43 +13,28 @@ import { SignUpForm } from './components/sign-up-form'
 export function SignUp() {
   return (
     <AuthLayout>
-      <Card className='gap-4'>
-        <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>
-            Create an account
-          </CardTitle>
-          <CardDescription>
-            Enter your email and password to create an account. <br />
-            Already have an account?{' '}
-            <Link
-              to='/sign-in'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Sign In
-            </Link>
+      <Card className='bg-background/60 border-none shadow-2xl backdrop-blur-xl'>
+        <CardHeader className='space-y-1 pb-6'>
+          <div className='flex items-center justify-between'>
+            <CardTitle className='from-primary to-primary/60 bg-gradient-to-br bg-clip-text text-3xl font-bold tracking-tight text-transparent'>
+              Create Account
+            </CardTitle>
+          </div>
+          <CardDescription className='text-muted-foreground text-base font-medium'>
+            Follow the simple steps to set up your restaurant and join us.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <SignUpForm />
         </CardContent>
-        <CardFooter>
-          <p className='text-muted-foreground px-8 text-center text-sm'>
-            By creating an account, you agree to our{' '}
-            <a
-              href='/terms'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Terms of Service
-            </a>{' '}
-            and{' '}
-            <a
-              href='/privacy'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Privacy Policy
-            </a>
-            .
-          </p>
+        <CardFooter className='text-muted-foreground flex flex-wrap items-center justify-center gap-2 pt-2 text-sm'>
+          Already have an account?{' '}
+          <Link
+            to='/sign-in'
+            className='text-primary font-semibold underline-offset-4 transition-all hover:underline'
+          >
+            Sign In
+          </Link>
         </CardFooter>
       </Card>
     </AuthLayout>

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { type LinkProps } from '@tanstack/react-router'
 
 type User = {
@@ -8,7 +9,7 @@ type User = {
 
 type Team = {
   name: string
-  logo: React.ElementType
+  logo: React.ElementType | string
   plan: string
 }
 
@@ -41,4 +42,4 @@ type SidebarData = {
   navGroups: NavGroup[]
 }
 
-export type { SidebarData, NavGroup, NavItem, NavCollapsible, NavLink }
+export type { SidebarData, Team, NavGroup, NavItem, NavCollapsible, NavLink }
