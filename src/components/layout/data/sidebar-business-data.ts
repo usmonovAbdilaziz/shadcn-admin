@@ -38,6 +38,11 @@ export const sidebarBusinessData: SidebarData = {
           url: '/business/table',
           icon: Table,
         },
+        {
+          title: 'Booking',
+          url: '/business/booking',
+          icon: Table,
+        },
       ],
     },
   ],

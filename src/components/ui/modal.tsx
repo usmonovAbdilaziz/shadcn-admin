@@ -7,6 +7,7 @@ type CustomModalProps = {
   title?: string
   children: ReactNode
   className?: string
+  wrapperClassName?: string
 }
 
 export function Modal({
@@ -15,6 +16,7 @@ export function Modal({
   title,
   children,
   className,
+  wrapperClassName,
 }: CustomModalProps) {
   // ESC bosilganda yopish
   useEffect(() => {
@@ -31,7 +33,7 @@ export function Modal({
   if (!open) return null
 
   return (
-    <div className='fixed inset-0 z-50 m-4'>
+    <div className={cn('fixed inset-0 m-4', wrapperClassName || 'z-50')}>
       {/* Overlay */}
       <div
         className='absolute inset-0 bg-black/50 backdrop-blur-sm'

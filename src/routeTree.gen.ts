@@ -29,6 +29,7 @@ import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenti
 import { Route as AuthenticatedBusinessUsersRouteImport } from './routes/_authenticated/business/users'
 import { Route as AuthenticatedBusinessTableRouteImport } from './routes/_authenticated/business/table'
 import { Route as AuthenticatedBusinessServiceRouteImport } from './routes/_authenticated/business/service'
+import { Route as AuthenticatedBusinessBookingRouteImport } from './routes/_authenticated/business/booking'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminServiceRouteImport } from './routes/_authenticated/admin/service'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin/dashboard'
@@ -139,6 +140,12 @@ const AuthenticatedBusinessServiceRoute =
     path: '/business/service',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBusinessBookingRoute =
+  AuthenticatedBusinessBookingRouteImport.update({
+    id: '/business/booking',
+    path: '/business/booking',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -180,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/service': typeof AuthenticatedAdminServiceRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/business/booking': typeof AuthenticatedBusinessBookingRoute
   '/business/service': typeof AuthenticatedBusinessServiceRoute
   '/business/table': typeof AuthenticatedBusinessTableRoute
   '/business/users': typeof AuthenticatedBusinessUsersRoute
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/service': typeof AuthenticatedAdminServiceRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/business/booking': typeof AuthenticatedBusinessBookingRoute
   '/business/service': typeof AuthenticatedBusinessServiceRoute
   '/business/table': typeof AuthenticatedBusinessTableRoute
   '/business/users': typeof AuthenticatedBusinessUsersRoute
@@ -232,6 +241,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/service': typeof AuthenticatedAdminServiceRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/business/booking': typeof AuthenticatedBusinessBookingRoute
   '/_authenticated/business/service': typeof AuthenticatedBusinessServiceRoute
   '/_authenticated/business/table': typeof AuthenticatedBusinessTableRoute
   '/_authenticated/business/users': typeof AuthenticatedBusinessUsersRoute
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/service'
     | '/admin/users'
+    | '/business/booking'
     | '/business/service'
     | '/business/table'
     | '/business/users'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/service'
     | '/admin/users'
+    | '/business/booking'
     | '/business/service'
     | '/business/table'
     | '/business/users'
@@ -310,6 +322,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/service'
     | '/_authenticated/admin/users'
+    | '/_authenticated/business/booking'
     | '/_authenticated/business/service'
     | '/_authenticated/business/table'
     | '/_authenticated/business/users'
@@ -476,6 +489,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBusinessServiceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/business/booking': {
+      id: '/_authenticated/business/booking'
+      path: '/business/booking'
+      fullPath: '/business/booking'
+      preLoaderRoute: typeof AuthenticatedBusinessBookingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/admin/users'
@@ -512,6 +532,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminServiceRoute: typeof AuthenticatedAdminServiceRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedBusinessBookingRoute: typeof AuthenticatedBusinessBookingRoute
   AuthenticatedBusinessServiceRoute: typeof AuthenticatedBusinessServiceRoute
   AuthenticatedBusinessTableRoute: typeof AuthenticatedBusinessTableRoute
   AuthenticatedBusinessUsersRoute: typeof AuthenticatedBusinessUsersRoute
@@ -526,6 +547,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminServiceRoute: AuthenticatedAdminServiceRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedBusinessBookingRoute: AuthenticatedBusinessBookingRoute,
   AuthenticatedBusinessServiceRoute: AuthenticatedBusinessServiceRoute,
   AuthenticatedBusinessTableRoute: AuthenticatedBusinessTableRoute,
   AuthenticatedBusinessUsersRoute: AuthenticatedBusinessUsersRoute,

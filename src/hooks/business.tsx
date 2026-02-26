@@ -3,11 +3,14 @@ import { AddService, AddStaff, AddTable } from '@/types/business'
 import {
   addService,
   addStaff,
+  addStaffToService,
   addTable,
+  allBusinessBooking,
   deleteService,
   deleteStaff,
   deleteTable,
   getAllServices,
+  getAllStaffByBusinessId,
   getAllStaffs,
   getAllTables,
   updateService,
@@ -120,4 +123,28 @@ export const useUpdateTable = () => {
     mutationKey: ['tables'],
   })
 }
-
+//staff
+export const useGetAllStaffByBusinessId = (businessId: string) => {
+  return useQuery({
+    queryKey: ['staffs'],
+    queryFn: () => getAllStaffByBusinessId(businessId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    enabled: !!businessId,
+  })
+}
+export const useAddStaffToService=(serviceId:string)=>{
+  return useMutation({
+    mutationFn: (data:any) => addStaffToService(serviceId,data),
+    mutationKey: ['services'],
+  })
+}
+export const useGetAllBooking=(businessId:string)=>{
+  return useQuery({
+    queryKey: ['bookings'],
+    queryFn: () => allBusinessBooking(businessId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    enabled: !!businessId,
+  })
+}

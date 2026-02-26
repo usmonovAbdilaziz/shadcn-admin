@@ -12,12 +12,12 @@ export const ClientHeader = () => {
 
   return (
     <header className='fixed top-0 right-0 left-0 z-50'>
-      <div className='flex justify-between items-center bg-white p-4 shadow-sm'>
+      <div className='flex justify-between items-center bg-white dark:bg-gray-800 p-4 shadow-sm'>
         <ul className='flex items-center gap-2'>
           <li>
-            <h1 className='text-[16px] md:text-[20px] text-black font-medium'>Stol:</h1>
+            <h1 className='text-[16px] md:text-[20px] text-black dark:text-white font-medium'>Stol:</h1>
           </li>
-          <li className='text-[16px] md:text-[20px] text-black font-bold'>
+          <li className='text-[16px] md:text-[20px] text-black dark:text-white font-bold'>
             {tables?.data.tableNumber}
             {tables?.data.tableColumns}
           </li>

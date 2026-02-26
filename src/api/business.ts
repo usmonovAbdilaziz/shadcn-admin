@@ -119,4 +119,30 @@ export const updateTable = async (tableData: AddTable, tableId: string) => {
   })
   return res.data
 }
-
+export const getAllStaffByBusinessId = async (businessId: string) => {
+  const token = localStorage.getItem('token')
+  const res = await axios.get(`${baseApiv1}/staff/business/${businessId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  return res.data
+}
+export const addStaffToService = async (serviceId: string,data:any) => {
+  const token = localStorage.getItem('token')
+  const res = await axios.patch(`${baseApiv1}/service/${serviceId}`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  return res.data
+}
+export const allBusinessBooking = async (businessId: string) => {
+  const token = localStorage.getItem('token')
+  const res = await axios.get(`${baseApiv1}/booking/business/${businessId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  return res.data
+}

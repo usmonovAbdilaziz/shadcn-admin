@@ -19,8 +19,10 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
   useAddService,
+  useAddStaffToService,
   useDeleteService,
   useGetAllServices,
+  useGetAllStaffByBusinessId,
   useUpdateService,
 } from '@/hooks/business'
 import { Button } from '@/components/ui/button'
@@ -110,11 +112,18 @@ export function Service() {
   const [editPhotoError, setEditPhotoError] = useState<string | null>(null)
   const [infoOpen, setInfoOpen] = useState(false)
   const [info, setInfo] = useState<Service>()
+  const [removeStaffId, setRemoveStaffId] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const [selectedStaff, setSelectedStaff] = useState<any>('')
+
   const { data, isLoading, refetch } = useGetAllServices(user?.business?.id)
   const { mutateAsync: deleteService } = useDeleteService()
   const { mutateAsync: updateService } = useUpdateService()
   const { mutateAsync: addService } = useAddService()
+  const { mutateAsync: addStaffToService } = useAddStaffToService(info?.id!)
+const {data:staffs} = useGetAllStaffByBusinessId(user?.business?.id)
+console.log("staffs",staffs);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -164,7 +173,6 @@ export function Service() {
         refetch()
       },
       onError: (error: any) => {
-        console.log(error)
         const message =
           error?.response?.data?.error?.message ||
           error?.response?.data?.message ||
@@ -254,7 +262,6 @@ export function Service() {
       toast.success('Service updated successfully')
       refetch()
     } catch (error: any) {
-      console.error('Update Error:', error)
       const message =
         error?.response?.data?.error?.message ||
         error?.response?.data?.message ||
@@ -286,9 +293,61 @@ export function Service() {
   const handleInfoClick = (service: any) => {
     setInfoOpen(true)
     setInfo(service)
-    console.log('Info', service)
   }
-  info && console.log('info', info)
+  const handleAddStaff = async () => {
+    const staffId = String(selectedStaff || '')
+    if (!staffId) {
+      toast.error('Please select a staff member first')
+      return
+    }
+
+    const existingStaffIds = (info?.staff || []).map((s: any) => String(s.id))
+    if (existingStaffIds.includes(staffId)) {
+      toast.error('Staff already added')
+      return
+    }
+
+    const newStaffIds = Array.from(new Set([...existingStaffIds, staffId]))
+
+    try {
+      await addStaffToService({ staffIds: newStaffIds })
+      toast.success('Staff added successfully')
+      setSelectedStaff('')
+      setInfoOpen(false)
+      refetch()
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to add staff'
+      toast.error(message)
+    }
+  }
+
+  const handleRemoveConfirm = async () => {
+    if (!removeStaffId) return
+
+    const existingStaffIds = (info?.staff || []).map((s: any) => String(s.id))
+    const remaining = existingStaffIds.filter((id) => id !== String(removeStaffId))
+
+    try {
+      await addStaffToService({ staffIds: remaining })
+      toast.success('Staff removed successfully')
+      setRemoveStaffId(null)
+      setConfirmOpen(false)
+      setInfoOpen(false)
+      refetch()
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to remove staff'
+      toast.error(message)
+    }
+  }
+  // info && console.log('info', info)
   return (
     <>
       <div className='p-6 lg:p-8'>
@@ -801,6 +860,35 @@ export function Service() {
           </Form>
         </Modal>
         <Modal
+          title='Confirm'
+          open={confirmOpen}
+          wrapperClassName='z-[9999]'
+          onClose={() => {
+            setConfirmOpen(false)
+            setRemoveStaffId(null)
+          }}
+        >
+          <div className='space-y-4'>
+            <p className='text-sm'>
+              Siz bu odamni shu servicedan chiqarmoqchimisiz?
+            </p>
+            <div className='flex justify-end gap-2'>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setConfirmOpen(false)
+                  setRemoveStaffId(null)
+                }}
+              >
+                Yo'q
+              </Button>
+              <Button onClick={handleRemoveConfirm} className='bg-destructive text-white'>
+                Ha
+              </Button>
+            </div>
+          </div>
+        </Modal>
+        <Modal
           title='Service Info'
           open={infoOpen}
           onClose={() => setInfoOpen(false)}
@@ -906,7 +994,7 @@ export function Service() {
                         <div className='grid grid-cols-1 gap-2'>
                           {info.staff.map((item, index) => (
                             <div
-                              key={index}
+                              key={item.id}
                               className='hover:bg-muted flex items-center justify-between rounded-md border-b p-2 transition-colors last:border-0'
                             >
                               <div className='flex flex-col'>
@@ -917,15 +1005,43 @@ export function Service() {
                                   {item.position}
                                 </span>
                               </div>
-                              <Badge variant='outline' className='text-[10px]'>
-                                Team Member
-                              </Badge>
+                              <div className='flex items-center gap-2'>
+                                <Badge variant='outline' className='text-[10px]'>
+                                  Team Member
+                                </Badge>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  onClick={() => {
+                                    setRemoveStaffId(item.id)
+                                    setConfirmOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className='h-4 w-4' />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
                       )}
                     </ScrollArea>
+                      
                   </div>
+                </div>
+                <div className='flex items-center gap-3 mt-2'>
+                  <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder='Select staff' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staffs?.data?.map((staff: any) => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          {staff.position} - {staff.fullName}: {staff.phoneNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleAddStaff}>Save</Button>
                 </div>
               </CardContent>
             </Card>
