@@ -5,13 +5,17 @@ import {
   PlusCircle,
   MinusCircle,
   CheckCircle2,
+  ThermometerSun,
+  Snowflake,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
+import { useCartStore } from '@/store/use-cart-store'
 
-export const HotMeals = ({ services, cart, updateCount }: any) => {
+export const HotMeals = ({ services }: any) => {
+  const { items: cartItems, updateQty, addToCart } = useCartStore()
   const [type, setType] = useState('HOT')
   const servicesHotData = services?.data.filter(
     (service: any) =>
@@ -21,33 +25,47 @@ export const HotMeals = ({ services, cart, updateCount }: any) => {
       service.type === type
   )
   return (
-    <>
-      <div className='flex w-full items-center justify-end gap-2'>
-        <Button
-          size={'sm'}
-          variant={type === 'HOT' ? 'default' : 'outline'}
-          onClick={() => setType('HOT')}
-        >
-          Hot
-        </Button>
-        <Button
-          size={'sm'}
-          variant={type === 'COLD' ? 'default' : 'outline'}
-          onClick={() => setType('COLD')}
-        >
-          Cold
-        </Button>
-      </div>
-      <div>
+    <Card className='w-full overflow-hidden p-4'>
+      <div className='mb-4 flex w-full items-center justify-between'>
+      <h1 className='text-2xl font-bold'>Meals</h1>
+      <div className="inline-flex rounded-xl border bg-background/60 p-1 shadow-sm backdrop-blur">
+          <Button
+            size="sm"
+            variant={type === "HOT" ? "default" : "ghost"}
+            className={cn(
+              "rounded-lg",
+              type === "HOT" ? "shadow-sm" : "text-muted-foreground"
+            )}
+            onClick={() => setType("HOT")}
+          >
+            <ThermometerSun className="mr-2 h-4 w-4" />
+            Hot
+          </Button>
+          <Button
+            size="sm"
+            variant={type === "COLD" ? "default" : "ghost"}
+            className={cn(
+              "rounded-lg",
+              type === "COLD" ? "shadow-sm" : "text-muted-foreground"
+            )}
+            onClick={() => setType("COLD")}
+          >
+            <Snowflake  className="mr-2 h-4 w-4" />
+            Cold
+          </Button>
+        </div>
+          </div>
+      <div className='flex flex-wrap gap-4'>
         {servicesHotData?.map((service: any) => {
-          const count = cart[service.id] || 0
+          const item = cartItems.find(i => i.serviceId === service.id && Object.keys(i.options).length === 0)
+          const count = item?.qty || 0
           const isSelected = count > 0
 
           return (
             <Card
               key={service.id}
               className={cn(
-                'group relative w-[300px] overflow-hidden border-2 transition-all duration-300',
+                'group relative w-[280px] overflow-hidden border-2 transition-all duration-300',
                 isSelected
                   ? 'border-primary scale-[1.02] shadow-lg'
                   : 'border-transparent shadow-sm'
@@ -61,17 +79,17 @@ export const HotMeals = ({ services, cart, updateCount }: any) => {
                     className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-110'
                     alt={service.name}
                   />
-                  <div className='absolute bottom-2 left-2 flex gap-1'>
+                  <div className='absolute bottom-2 left-2 flex gap-1 '>
                     <Badge
                       variant='secondary'
-                      className='bg-white/80 backdrop-blur-sm'
+                      className='bg-white/80 backdrop-blur-sm dark:bg-black'
                     >
-                      <Timer className='mr-1 h-3 w-3' /> {service.duration} min
+                      <Timer className='mr-1 h-3 w-3 ' /> {service.duration} min
                     </Badge>
                   </div>
                   {isSelected && (
                     <div className='animate-in zoom-in absolute top-2 right-2'>
-                      <CheckCircle2 className='text-primary h-6 w-6 fill-white' />
+                      <CheckCircle2 className='text-green h-6 w-6 fill-white dark:fill-black' />
                     </div>
                   )}
                 </div>
@@ -112,7 +130,7 @@ export const HotMeals = ({ services, cart, updateCount }: any) => {
                             variant='outline'
                             size='icon'
                             className='h-8 w-8 rounded-full'
-                            onClick={() => updateCount(service.id, -1)}
+                            onClick={() => { if (item) updateQty(item.id, -1) }}
                           >
                             <MinusCircle className='h-4 w-4' />
                           </Button>
@@ -125,7 +143,7 @@ export const HotMeals = ({ services, cart, updateCount }: any) => {
                         variant={isSelected ? 'default' : 'outline'}
                         size='icon'
                         className='h-8 w-8 rounded-full'
-                        onClick={() => updateCount(service.id, 1)}
+                        onClick={() => addToCart(service, {})}
                       >
                         <PlusCircle className='h-4 w-4' />
                       </Button>
@@ -137,6 +155,6 @@ export const HotMeals = ({ services, cart, updateCount }: any) => {
           )
         })}
       </div>
-    </>
+    </Card>
   )
 }

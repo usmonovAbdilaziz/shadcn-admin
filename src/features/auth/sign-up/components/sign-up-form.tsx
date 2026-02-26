@@ -139,7 +139,7 @@ export function SignUpForm({
         toast.success('Sign up successfully!')
         localStorage.setItem('token', responce.data.token)
         localStorage.setItem('user', JSON.stringify(responce.data.user))
-        navigate({to: '/'})
+        navigate({to: '/admin/business'})
       },
       onError: (err: any) => {
         setIsLoading(false)

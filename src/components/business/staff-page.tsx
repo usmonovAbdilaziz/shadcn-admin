@@ -18,9 +18,7 @@ import {
   Eye,
   Briefcase,
   Clock,
-  DollarSign,
   Info,
-  Users,
   ThumbsUp,
   Workflow,
 } from 'lucide-react'

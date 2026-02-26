@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { ShoppingBag } from 'lucide-react'
 import { useGetClientServices } from '@/hooks/client'
 import { Button } from '../ui/button'
 import { Drinks } from './drinks'
 import { HotMeals } from './hot-meals'
+import { Karzinka } from './Karzinka'
 import { Salads } from './salads'
 import { Sweets } from './sweeds'
+import { useCartStore } from '@/store/use-cart-store'
 
 type Category = 'FOODS' | 'DRINKS' | 'SWEETS' | 'SALADS'
 
@@ -18,47 +20,71 @@ const CATEGORY_COMPONENTS: Record<Category, React.ComponentType<any>> = {
 
 const CATEGORIES: Category[] = ['FOODS', 'DRINKS', 'SWEETS', 'SALADS']
 
+const CATEGORY_STORAGE_KEY = 'client_active_category'
+const KARZINKA_STORAGE_KEY = 'client_show_karzinka'
+
+const loadCategoryIndex = (): number => {
+  try {
+    const saved = localStorage.getItem(CATEGORY_STORAGE_KEY)
+    if (saved) {
+      const idx = parseInt(saved, 10)
+      if (idx >= 0 && idx < CATEGORIES.length) return idx
+    }
+  } catch {}
+  return 0
+}
+
 export const ClientBody = () => {
   const { data: services } = useGetClientServices()
-  const [count, setCount] = useState(0)
-  const [cart, setCart] = useState<{ [key: string]: number }>({})
+  const [count, setCount] = useState(loadCategoryIndex)
+  const { items: cartItems, clearCart, totalItems, syncTotals } = useCartStore()
+
+  useEffect(() => {
+    syncTotals()
+  }, [])
+  const [showKarzinka, setShowKarzinka] = useState(() => {
+    try {
+      return localStorage.getItem(KARZINKA_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem(KARZINKA_STORAGE_KEY, showKarzinka.toString())
+  }, [showKarzinka])
+
+  // State management functions moved to store or refactored to use store items
 
   const activeCategory = CATEGORIES[count]
   const ActiveComponent = CATEGORY_COMPONENTS[activeCategory]
 
-  const updateCount = (id: string, delta: number) => {
-    setCart((prev) => {
-      const currentCount = prev[id] || 0
-      const newCount = Math.max(0, currentCount + delta)
-
-      if (newCount === 0) {
-        const { [id]: _, ...rest } = prev
-        return rest
-      }
-      return { ...prev, [id]: newCount }
-    })
-  }
-
   const handleNext = () => {
-    const payload = Object.entries(cart).map(([serviceId, count]) => ({
-      serviceId,
-      count,
-    }))
-
-    if (payload.length === 0) {
+    if (cartItems.length === 0) {
       alert('Iltimos, kamida bitta xizmatni tanlang!')
       return
     }
 
-    localStorage.setItem('selectedServices', JSON.stringify(payload))
-
     if (count < CATEGORIES.length - 1) {
       setCount((prev) => prev + 1)
     } else {
-      console.log('Final Order:', payload)
-      // Optional: Navigate to checkout or summary page
+      setShowKarzinka(true)
     }
   }
+
+  const handleOrder = useCallback(() => {
+    console.log('Final Order:', cartItems)
+    // Cart tozalash
+    clearCart()
+    setShowKarzinka(false)
+    setCount(0)
+    localStorage.removeItem(CATEGORY_STORAGE_KEY) // We can reset category too if wanted
+  }, [cartItems, clearCart])
+
+  const handleBackFromKarzinka = useCallback(() => {
+    setShowKarzinka(false)
+    setCount(CATEGORIES.length - 1)
+  }, [])
 
   const handlePrev = () => {
     if (count > 0) {
@@ -66,19 +92,28 @@ export const ClientBody = () => {
     }
   }
 
+  if (showKarzinka) {
+    return (
+      <Karzinka
+        services={services}
+        onBack={handleBackFromKarzinka}
+        onOrder={handleOrder}
+      />
+    )
+  }
+
   return (
     <div className='mt-20 flex w-full flex-col items-center pb-20'>
       <div className='flex w-full max-w-[1280px] flex-wrap justify-center gap-6 px-4'>
+       
         {ActiveComponent && (
           <ActiveComponent
             services={services}
-            cart={cart}
-            updateCount={updateCount}
           />
         )}
       </div>
 
-      {Object.keys(cart).length > 0 && (
+      {cartItems.length > 0 && (
         <div className='animate-in slide-in-from-bottom-5 fixed bottom-10 flex gap-4'>
           {count > 0 && (
             <Button
@@ -99,7 +134,7 @@ export const ClientBody = () => {
             {count === CATEGORIES.length - 1
               ? 'Finish Order'
               : 'Next Category'}{' '}
-            ({Object.values(cart).reduce((a, b) => a + b, 0)})
+            {totalItems})
           </Button>
         </div>
       )}

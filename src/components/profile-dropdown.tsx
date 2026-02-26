@@ -40,7 +40,7 @@ export function ProfileDropdown() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link to='/settings'>
+              <Link to='/admin/business'>
                 Profile
               </Link>
             </DropdownMenuItem>

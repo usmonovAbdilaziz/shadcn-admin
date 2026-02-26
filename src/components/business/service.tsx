@@ -74,6 +74,8 @@ interface Service {
   liters?: string[]
 }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png']
+
 const formSchema = z.object({
   businessId: z.string(),
   name: z.string(),
@@ -84,7 +86,16 @@ const formSchema = z.object({
   price: z.number(),
   isActive: z.boolean(),
   staff: z.array(z.string()),
-  photoUrl: z.any().optional(),
+  photoUrl: z
+    .any()
+    .optional()
+    .refine(
+      (files) => {
+        if (!files || files.length === 0) return true
+        return ALLOWED_IMAGE_TYPES.includes(files[0]?.type)
+      },
+      { message: 'Faqat JPG, JPEG va PNG formatdagi rasmlar qabul qilinadi.' }
+    ),
   liters: z.array(z.string()).optional(),
 })
 
@@ -92,9 +103,11 @@ export function Service() {
   const Category = ['FOODS', 'DRINKS', 'SWEETS', 'SALADS']
   const LiterOptions = ['0.5', '1', '1.5', '2', '2.5']
   const [open, setOpen] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   // Inline editing states
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editFormData, setEditFormData] = useState<any>({})
+  const [editPhotoError, setEditPhotoError] = useState<string | null>(null)
   const [infoOpen, setInfoOpen] = useState(false)
   const [info, setInfo] = useState<Service>()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -141,16 +154,32 @@ export function Service() {
       formData.append('photoUrl', values.photoUrl[0])
     }
 
+    setPhotoError(null)
     addService(formData, {
       onSuccess: () => {
         setOpen(false)
         form.reset()
+        setPhotoError(null)
         toast.success('Service added successfully')
         refetch()
       },
-      onError: (error) => {
+      onError: (error: any) => {
         console.log(error)
-        toast.error('Failed to add service')
+        const message =
+          error?.response?.data?.error?.message ||
+          error?.response?.data?.message ||
+          error?.message ||
+          ''
+        if (
+          message
+            .toLowerCase()
+            .includes('invalid file type') ||
+          message.toLowerCase().includes('file')
+        ) {
+          setPhotoError(message)
+        } else {
+          toast.error(message || 'Failed to add service')
+        }
       },
     })
   }
@@ -216,15 +245,29 @@ export function Service() {
     }
 
     try {
+      setEditPhotoError(null)
       await updateService({ serviceData: payload, serviceId: editingId } as any)
 
       setEditingId(null)
       setEditFormData({})
+      setEditPhotoError(null)
       toast.success('Service updated successfully')
       refetch()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Update Error:', error)
-      toast.error('Failed to update service')
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        ''
+      if (
+        message.toLowerCase().includes('invalid file type') ||
+        message.toLowerCase().includes('file')
+      ) {
+        setEditPhotoError(message)
+      } else {
+        toast.error(message || 'Failed to update service')
+      }
     }
   }
 
@@ -251,7 +294,7 @@ export function Service() {
       <div className='p-6 lg:p-8'>
         <div className='my-4 flex items-center justify-between'>
           <h1 className='text-2xl font-bold'>Service List</h1>
-          <Button onClick={() => setOpen(true)}>Add Service</Button>
+          <Button onClick={() => { setPhotoError(null); setOpen(true) }}>Add Service</Button>
         </div>
         {isLoading ? (
           <Loader2 className='mr-2 size-4 animate-spin' />
@@ -301,12 +344,18 @@ export function Service() {
                             )}
                             <Input
                               type='file'
-                              accept='image/*'
-                              onChange={(e) =>
+                              accept='.jpg,.jpeg,.png'
+                              onChange={(e) => {
+                                setEditPhotoError(null)
                                 handleInputChange('photo', e.target.files)
-                              }
+                              }}
                               className='w-[200px]'
                             />
+                            {editPhotoError && (
+                              <p className='text-sm font-medium text-destructive'>
+                                {editPhotoError}
+                              </p>
+                            )}
                           </div>
                         ) : service.photoUrl ? (
                           <img
@@ -664,42 +713,44 @@ export function Service() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name='duration'
-                render={({ field }) => (
-                  <FormItem className='relative'>
-                    <FormLabel>Duration</FormLabel>
-                    <FormControl>
-                      <Input
-                        type='number'
-                        placeholder='Duration'
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='price'
-                render={({ field }) => (
-                  <FormItem className='relative'>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <Input
-                        type='number'
-                        placeholder='Price'
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className='flex gap-3'>
+                <FormField
+                  control={form.control}
+                  name='duration'
+                  render={({ field }) => (
+                    <FormItem className='relative flex-1'>
+                      <FormLabel>Duration</FormLabel>
+                      <FormControl>
+                        <Input
+                          type='number'
+                          placeholder='Duration'
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name='price'
+                  render={({ field }) => (
+                    <FormItem className='relative flex-1'>
+                      <FormLabel>Price</FormLabel>
+                      <FormControl>
+                        <Input
+                          type='number'
+                          placeholder='Price'
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name='description'
@@ -722,11 +773,19 @@ export function Service() {
                     <FormControl>
                       <Input
                         type='file'
-                        accept='image/*'
-                        onChange={(e) => field.onChange(e.target.files)}
+                        accept='.jpg,.jpeg,.png'
+                        onChange={(e) => {
+                          setPhotoError(null)
+                          field.onChange(e.target.files)
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
+                    {photoError && (
+                      <p className='text-sm font-medium text-destructive'>
+                        {photoError}
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />

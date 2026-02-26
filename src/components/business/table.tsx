@@ -79,8 +79,6 @@ const bulkTableSchema = z.object({
 
 export const BusinessTable = () => {
   const user = JSON.parse(localStorage.getItem('user')!)
-  console.log(user.business.id);
-  
   const [open, setOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)

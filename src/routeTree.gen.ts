@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClientRouteImport } from './routes/client'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as ClientProfileRouteImport } from './routes/client/profile'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -41,6 +42,11 @@ const ClientRoute = ClientRouteImport.update({
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ClientProfileRoute = ClientProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => ClientRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
   id: '/(errors)/503',
@@ -158,7 +164,7 @@ const AuthenticatedAdminBusinessRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/client': typeof ClientRoute
+  '/client': typeof ClientRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
   '/sign-in': typeof authSignInRoute
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/client/profile': typeof ClientProfileRoute
   '/admin/business': typeof AuthenticatedAdminBusinessRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/service': typeof AuthenticatedAdminServiceRoute
@@ -182,7 +189,7 @@ export interface FileRoutesByFullPath {
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
 }
 export interface FileRoutesByTo {
-  '/client': typeof ClientRoute
+  '/client': typeof ClientRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
   '/sign-in': typeof authSignInRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/client/profile': typeof ClientProfileRoute
   '/admin/business': typeof AuthenticatedAdminBusinessRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/service': typeof AuthenticatedAdminServiceRoute
@@ -208,7 +216,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/client': typeof ClientRoute
+  '/client': typeof ClientRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/otp': typeof authOtpRoute
   '/(auth)/sign-in': typeof authSignInRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/client/profile': typeof ClientProfileRoute
   '/_authenticated/admin/business': typeof AuthenticatedAdminBusinessRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/service': typeof AuthenticatedAdminServiceRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/client/profile'
     | '/admin/business'
     | '/admin/dashboard'
     | '/admin/service'
@@ -269,6 +279,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/client/profile'
     | '/admin/business'
     | '/admin/dashboard'
     | '/admin/service'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/client/profile'
     | '/_authenticated/admin/business'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/service'
@@ -309,7 +321,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  ClientRoute: typeof ClientRoute
+  ClientRoute: typeof ClientRouteWithChildren
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authOtpRoute: typeof authOtpRoute
   authSignInRoute: typeof authSignInRoute
@@ -337,6 +349,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/client/profile': {
+      id: '/client/profile'
+      path: '/profile'
+      fullPath: '/client/profile'
+      preLoaderRoute: typeof ClientProfileRouteImport
+      parentRoute: typeof ClientRoute
     }
     '/(errors)/503': {
       id: '/(errors)/503'
@@ -519,9 +538,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ClientRouteChildren {
+  ClientProfileRoute: typeof ClientProfileRoute
+}
+
+const ClientRouteChildren: ClientRouteChildren = {
+  ClientProfileRoute: ClientProfileRoute,
+}
+
+const ClientRouteWithChildren =
+  ClientRoute._addFileChildren(ClientRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  ClientRoute: ClientRoute,
+  ClientRoute: ClientRouteWithChildren,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authOtpRoute: authOtpRoute,
   authSignInRoute: authSignInRoute,

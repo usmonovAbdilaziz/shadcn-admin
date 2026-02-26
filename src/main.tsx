@@ -14,6 +14,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { DirectionProvider } from '@/context/direction-provider'
 import { FontProvider } from '@/context/font-provider'
 import { ThemeProvider } from '@/context/theme-provider'
+import { SocketProvider } from '@/context/socket-context'
 // Styles
 import './styles/index.css'
 
@@ -90,11 +91,13 @@ if (!rootElement.innerHTML) {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <FontProvider>
-            <DirectionProvider>
-              <RouterProvider router={router} />
-            </DirectionProvider>
-          </FontProvider>
+          <SocketProvider>
+            <FontProvider>
+              <DirectionProvider>
+                <RouterProvider router={router} />
+              </DirectionProvider>
+            </FontProvider>
+          </SocketProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </StrictMode>
