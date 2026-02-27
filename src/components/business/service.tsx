@@ -992,7 +992,7 @@ console.log("staffs",staffs);
                         </p>
                       ) : (
                         <div className='grid grid-cols-1 gap-2'>
-                          {info.staff.map((item, index) => (
+                          {info.staff.map((item) => (
                             <div
                               key={item.id}
                               className='hover:bg-muted flex items-center justify-between rounded-md border-b p-2 transition-colors last:border-0'

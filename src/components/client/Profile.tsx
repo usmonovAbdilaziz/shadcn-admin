@@ -19,9 +19,18 @@ export const ClientProfile = () => {
     const fetchOrders = async () => {
       if (!token) return
       try {
-        const response = await axios.get('http://localhost:3002/api/v1/orders/client', {
+        const meResponse = await axios.get('http://localhost:3002/auth/me', {
           headers: { Authorization: `Bearer ${token}` }
         })
+        const clientId = meResponse.data?.data?.id
+        if (!clientId) {
+          throw new Error('Client ID not found')
+        }
+        const response = await axios.get(`http://localhost:3002/api/v1/booking/client/${clientId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        console.log("response",orders);
+        
         setOrders(response.data.data)
         toast.success('Buyurtmalar yuklandi')
       } catch (error) {
@@ -103,7 +112,7 @@ export const ClientProfile = () => {
                   {order.items?.map((item: any) => (
                     <div key={item.id} className='text-sm flex justify-between'>
                       <span className='text-muted-foreground'>{item.nameSnapshot} x{item.qty}</span>
-                      <span>{(item.priceSnapshot * item.qty).toLocaleString()} so'm</span>
+                      <span>{(item.priceSnapshot * item.qty)} so'm</span>
                     </div>
                   ))}
                 </div>
@@ -113,7 +122,7 @@ export const ClientProfile = () => {
                     <Clock className='h-3 w-3' /> {order.etaMinutes} daqiqa
                   </div>
                   <div className='font-bold text-lg'>
-                    {order.totalPrice.toLocaleString()} so'm
+                    {order.totalPrice} so'm
                   </div>
                 </div>
               </Card>

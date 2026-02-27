@@ -1,13 +1,14 @@
-import { useGetClientTable } from '@/hooks/client'
+import { useGetClientMe, useGetClientTable } from '@/hooks/client'
 import { useClientStore } from '@/store/use-client-store'
 import { User } from 'lucide-react'
 import { Button } from '../ui/button'
 import { useNavigate } from '@tanstack/react-router'
 
 export const ClientHeader = () => {
-  const tableId = localStorage.getItem('tableId')
-  const { data: tables } = useGetClientTable(tableId!)
-  const { token, phone } = useClientStore()
+  const { token } = useClientStore()
+  const { tableId } = useClientStore()
+  const {data:clientMe} =useGetClientMe(token!)
+  const { data: tables } = useGetClientTable({ tableId })
   const navigate = useNavigate()
 
   return (
@@ -31,7 +32,7 @@ export const ClientHeader = () => {
               className='flex items-center gap-2 text-primary hover:bg-primary/10 rounded-full'
               onClick={() => navigate({ to: '/client/profile' as any })}
             >
-              <div className='hidden md:block text-xs font-semibold'>{phone}</div>
+              <div className='hidden md:block text-xs font-semibold'>{clientMe?.data?.fullName}</div>
               <div className='h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center'>
                 <User className='h-4 w-4' />
               </div>

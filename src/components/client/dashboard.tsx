@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useGetClientTable } from '@/hooks/client'
+import { useGetClientBusiness, useGetClientTable } from '@/hooks/client'
 import { Button } from '../ui/button'
 import { Modal } from '../ui/modal'
 import {
@@ -15,39 +15,21 @@ import { ClientFooter } from './Footer'
 import { ClientHeader } from './Header'
 import { ClientBody } from './client-body'
 import { socket } from '@/lib/socket-client'
-import { Outlet, useMatchRoute } from '@tanstack/react-router'
+import { Outlet, useMatchRoute, useNavigate, useRouterState } from '@tanstack/react-router'
+import { useClientStore } from '@/store/use-client-store'
 
 function ClientSocketProvider({ children }: { children: React.ReactNode }) {
   const didConnect = useRef(false)
+  const tableId = useClientStore((s) => s.tableId)
   const [status, setStatus] = useState<
     'connecting' | 'connected' | 'disconnected'
   >('connecting')
-  const [roomId, setRoomId] = useState<string | null>(null)
-
-  useEffect(() => {
-    // localStorage dagi tableId ni tekshirish
-    const updateRoom = () => {
-      const id = localStorage.getItem('tableId')
-      setRoomId(id)
-    }
-
-    updateRoom()
-    // Oyna focus bo'lganda yoki storage o'zgarganda (boshqa tabda) yangilash
-    window.addEventListener('storage', updateRoom)
-    window.addEventListener('focus', updateRoom)
-
-    return () => {
-      window.removeEventListener('storage', updateRoom)
-      window.removeEventListener('focus', updateRoom)
-    }
-  }, [])
 
   useEffect(() => {
     if (didConnect.current) {
-      // Agar allaqachon ulangan bo'lsa va roomId o'zgarsa, qayta qo'shilish
-      if (socket.connected && roomId) {
-        console.log('🔄 Re-joining room:', roomId)
-        socket.emit('joinRoom', roomId)
+      if (socket.connected && tableId) {
+        console.log('🔄 Re-joining room:', tableId)
+        socket.emit('joinRoom', tableId)
       }
       return
     }
@@ -56,12 +38,9 @@ function ClientSocketProvider({ children }: { children: React.ReactNode }) {
     if (!socket.connected) socket.connect()
 
     const onConnect = () => {
-      console.log('✅ socket connected', socket.id)
       setStatus('connected')
-      // Ulangan zahoti xonaga qo'shilish
-      const curId = localStorage.getItem('tableId')
+      const curId = useClientStore.getState().tableId
       if (curId) {
-        console.log('📡 Emitting joinRoom on connect:', curId)
         socket.emit('joinRoom', curId)
       }
     }
@@ -81,7 +60,7 @@ function ClientSocketProvider({ children }: { children: React.ReactNode }) {
 
     if (socket.connected) {
       setStatus('connected')
-      const curId = localStorage.getItem('tableId')
+      const curId = useClientStore.getState().tableId
       if (curId) socket.emit('joinRoom', curId)
     }
 
@@ -90,7 +69,7 @@ function ClientSocketProvider({ children }: { children: React.ReactNode }) {
       socket.off('disconnect', onDisconnect)
       socket.off('joinedRoom', onJoinedRoom)
     }
-  }, [roomId])
+  }, [tableId])
 
   return (
     <>
@@ -127,25 +106,47 @@ function ClientSocketProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const ClientDashboard = () => {
-  const [tableId, setTableId] = useState<any>('')
-  const { data: tables } = useGetClientTable('')
+  const [selectedTableId, setSelectedTableId] = useState<string>('')
   const [open, setOpen] = useState(false)
+  const [selectBusinessId, setSelectBusinessId] = useState<string>('')
+  const businesses = useGetClientBusiness()
+  const tableId = useClientStore((s) => s.tableId)
+  const setTableId = useClientStore((s) => s.setTableId)
+  const setBusinessId = useClientStore((s) => s.setBusinessId)
+  const { data: tables } = useGetClientTable({ businessId: selectBusinessId })
   const matchRoute = useMatchRoute()
+  const navigate = useNavigate()
+  const routerState = useRouterState()
+
   const isProfileRoute = matchRoute({ to: '/client/profile' })
 
+  // Check tableId on every route change — if missing, redirect to /client and open modal
   useEffect(() => {
-    const table = localStorage.getItem('tableId')
-    if (!table) {
+    if (!tableId) {
+      navigate({ to: '/client' }).then(() => {
+        setOpen(true)
+      })
+    }
+  }, [routerState.location.pathname, tableId])
+  // Also open on mount if tableId is missing and tables are loaded
+  useEffect(() => {
+    if (!tableId && tables) {
       setOpen(true)
     }
   }, [tables])
-
+  useEffect(() => {
+    if (selectBusinessId) {
+      setBusinessId(selectBusinessId)
+    }
+  }, [selectBusinessId, setBusinessId])
   const findTable = () => {
-    localStorage.setItem('tableId', tableId)
+    if (!selectedTableId) return
+    setTableId(selectedTableId)
     setOpen(false)
   }
 
-  const tableData = tables?.data.filter(
+  const tableList = Array.isArray(tables?.data) ? tables.data : []
+  const tableData = tableList.filter(
     (table: any) => table.status === 'EMPTY'
   )
 
@@ -153,14 +154,42 @@ export const ClientDashboard = () => {
     <div className='flex flex-col gap-4'>
       <ClientSocketProvider>
         <ClientHeader />
-        
+
+        {/* Table selection modal — cannot be dismissed without selecting a table */}
         <Modal
           open={open}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            // Prevent dismissal without a table selected
+            if (!tableId) return
+            setOpen(false)
+          }}
           title='Stolingizni tanlang'
-        >
-          <Select onValueChange={(value) => setTableId(value)}>
+        > <div className='flex flex-col gap-4'>
+
+          
+          {businesses.isSuccess && (
+            <Select onValueChange={(value) => setSelectBusinessId(value)}>
+              <h1 className='text-lg font-semibold'>Businessni tanlang</h1>
+              <SelectTrigger className='w-full dark:text-white text-black'>
+                <SelectValue placeholder='Biznesni tanlang' />
+              </SelectTrigger>
+              <SelectContent>
+                {businesses.data.data.map((business: any) => (
+                  <SelectItem key={business.id} value={business.id}>
+                    <span className='text-[20px] text-black dark:text-white'>
+                      {business.businessName}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {selectBusinessId && <Select onValueChange={(value) => setSelectedTableId(value)}>
+            <p className='mt-3 text-sm text-muted-foreground'>
+                 Davom etish uchun stolingizni tanlashingiz shart.
+              </p>
             <SelectTrigger className='w-full dark:text-white text-black'>
+              
               <SelectValue placeholder='Stolingizni tanlang' />
             </SelectTrigger>
             <SelectContent>
@@ -173,10 +202,15 @@ export const ClientDashboard = () => {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-          <Button className='mt-4 w-full' onClick={findTable}>
+          </Select>}
+          <Button
+            className='mt-4 w-full'
+            onClick={findTable}
+            disabled={!selectedTableId}
+            >
             Tasdiqlash
           </Button>
+            </div>
         </Modal>
 
         {isProfileRoute ? <Outlet /> : <ClientBody />}

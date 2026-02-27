@@ -1,19 +1,37 @@
 import { useQuery } from '@tanstack/react-query'
-import { getClientServices, getClientTable } from '@/api/client'
-
-export const useGetClientTable = (tableId       : string) => {
+import { getBusenessAll, getClientMe, getClientServices, getClientTable } from '@/api/client'
+export const useGetClientBusiness = () => {
   return useQuery({
-    queryKey: ['client-table', tableId],
-    queryFn: () => getClientTable(tableId),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    queryKey: ['client-business' ],  
+    queryFn: () => getBusenessAll(),
+    staleTime: 5 * 60 * 1000, 
+    gcTime: 5 * 60 * 1000, 
   })
 }
-export const useGetClientServices = () => {
+export const useGetClientTable = (params: any) => {
   return useQuery({
-    queryKey: ['client-services'],
-    queryFn: getClientServices,
+    queryKey: ['client-table', params],
+    queryFn: () => getClientTable(params),
     staleTime: 5 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    enabled: !!(params?.businessId || params?.tableId),
   })
 }
+export const useGetClientServices = (businessId: string) => {
+  return useQuery({
+    queryKey: ['client-services', businessId],
+    queryFn: () => getClientServices(businessId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    enabled: !!businessId,
+  })
+}
+export const useGetClientMe = (token: string) => {
+  return useQuery({
+    queryKey: ['client-me', token],
+    queryFn: () => getClientMe(token),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000, 
+    enabled:!!token,
+  })
+}   

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { ShoppingBag } from 'lucide-react'
-import { useGetClientServices } from '@/hooks/client'
+import { useGetClientMe, useGetClientServices } from '@/hooks/client'
 import { Button } from '../ui/button'
 import { Drinks } from './drinks'
 import { HotMeals } from './hot-meals'
@@ -8,6 +8,7 @@ import { Karzinka } from './Karzinka'
 import { Salads } from './salads'
 import { Sweets } from './sweeds'
 import { useCartStore } from '@/store/use-cart-store'
+import { useClientStore } from '@/store/use-client-store'
 
 type Category = 'FOODS' | 'DRINKS' | 'SWEETS' | 'SALADS'
 
@@ -35,13 +36,22 @@ const loadCategoryIndex = (): number => {
 }
 
 export const ClientBody = () => {
-  const { data: services } = useGetClientServices()
+  const { token, businessId, setClientId } = useClientStore()
+  const { data: services } = useGetClientServices(businessId || '')
   const [count, setCount] = useState(loadCategoryIndex)
   const { items: cartItems, clearCart, totalItems, syncTotals } = useCartStore()
+  const { data: client } = useGetClientMe(token!)
+
+  useEffect(() => {
+    const clientId = client?.data?.id || client?.id
+    if (clientId) {
+      setClientId(clientId)
+    }
+  }, [client, setClientId])
 
   useEffect(() => {
     syncTotals()
-  }, [])
+  }, [syncTotals])
   const [showKarzinka, setShowKarzinka] = useState(() => {
     try {
       return localStorage.getItem(KARZINKA_STORAGE_KEY) === 'true'
@@ -73,13 +83,12 @@ export const ClientBody = () => {
   }
 
   const handleOrder = useCallback(() => {
-    console.log('Final Order:', cartItems)
     // Cart tozalash
     clearCart()
     setShowKarzinka(false)
     setCount(0)
     localStorage.removeItem(CATEGORY_STORAGE_KEY) // We can reset category too if wanted
-  }, [cartItems, clearCart])
+  }, [clearCart])
 
   const handleBackFromKarzinka = useCallback(() => {
     setShowKarzinka(false)
@@ -134,7 +143,7 @@ export const ClientBody = () => {
             {count === CATEGORIES.length - 1
               ? 'Finish Order'
               : 'Next Category'}{' '}
-            {totalItems})
+            {totalItems}
           </Button>
         </div>
       )}

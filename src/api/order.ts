@@ -1,8 +1,14 @@
 import axios from 'axios'
 import { baseApiv1 } from './baseApi'
 
-export const createOrder = async (tableId: string, items: any[]) => {
-  const res = await axios.post(`${baseApiv1}/orders`, { tableId, items })
+/**
+ * Create an order.
+ * If `token` is provided (authenticated client), the backend will immediately
+ * confirm the order — no Telegram redirect needed.
+ */
+export const createOrder = async (tableId: string, items: any[], token?: string | null) => {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const res = await axios.post(`${baseApiv1}/orders`, { tableId, items }, { headers })
   return res.data
 }
 

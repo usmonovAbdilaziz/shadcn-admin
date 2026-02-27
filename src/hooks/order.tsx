@@ -1,10 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createOrder, getOrderStatus } from '@/api/order'
+import { useClientStore } from '@/store/use-client-store'
 
 export const useCreateOrder = () => {
+  const token = useClientStore((s) => s.token)
+
   return useMutation({
-    mutationFn: ({ tableId, items }: { tableId: string; items: any[] }) => 
-      createOrder(tableId, items),
+    mutationFn: ({ tableId, items }: { tableId: string; items: any[] }) =>
+      createOrder(tableId, items, token),
   })
 }
 

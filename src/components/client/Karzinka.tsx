@@ -30,10 +30,8 @@ export const Karzinka = ({
   onOrder,
 }: KarzinkaProps) => {
   const { items: cartItems, updateQty, removeFromCart, totalPrice, totalItems } = useCartStore()
-  const { setClient } = useClientStore()
+  const { setClient, tableId } = useClientStore()
   const navigate = useNavigate()
-  
-  const tableId = localStorage.getItem('tableId')
   const { mutateAsync: createOrder } = useCreateOrder()
   const socket = useSocket() as any
   
@@ -72,7 +70,6 @@ export const Karzinka = ({
     if (processedOrderIdRef.current === orderId) return
     processedOrderIdRef.current = orderId
 
-    console.log('✅ Handling order confirmation:', orderId)
     
     // 1. Update local state
     setPendingOrder((prev: any) => {
@@ -82,11 +79,11 @@ export const Karzinka = ({
     
     // 2. Save client session
     if (orderData.token) {
-      console.log('🔑 Token received, saving to client store')
       setClient({ 
         token: orderData.token, 
         phone: orderData.phone,
-        fullName: 'Mijoz'
+        fullName: 'Mijoz',
+        clientId: orderData.clientId,
       })
       // Legacy support/External scripts
       localStorage.setItem('token', orderData.token)
@@ -106,7 +103,6 @@ export const Karzinka = ({
   useEffect(() => {
     const orderData = orderStatusData?.data
     if (orderData && orderData.status === 'CONFIRMED') {
-      console.log('🔄 Polling sync: Order confirmed')
       handleConfirmAction(orderData)
     }
   }, [orderStatusData?.data?.status]) // Only react to status changes in polling data
@@ -129,22 +125,35 @@ export const Karzinka = ({
   const handleSubmit = async () => {
     if (isSubmitting || !tableId) return
     setIsSubmitting(true)
-    console.log('🚀 Submitting order for table:', tableId);
 
     try {
       const result = await createOrder({ tableId, items: cartItems })
-      console.log('📦 Order creation result:', result);
-      
       const orderData = result.data
+
+      // ── Already authenticated: backend confirmed immediately ──
+      if (orderData.confirmed) {
+        const confirmedOrder = {
+          id: orderData.orderId,
+          status: 'CONFIRMED',
+          etaMinutes: orderData.etaMinutes,
+          token: orderData.token,
+          phone: orderData.phone,
+        }
+        setPendingOrder(confirmedOrder)
+        setShowConfirmModal(true)
+        handleConfirmAction({ ...confirmedOrder, orderId: confirmedOrder.id })
+        return
+      }
+
+      // ── Unauthenticated: redirect to Telegram for confirmation ──
       const newPendingOrder = {
         id: orderData.orderId,
         telegramUrl: orderData.telegramUrl,
-        status: 'PENDING_CONFIRM'
+        status: 'PENDING_CONFIRM',
       }
-      
       setPendingOrder(newPendingOrder)
       setShowConfirmModal(true)
-      
+
       if (orderData.telegramUrl) {
         window.open(orderData.telegramUrl, '_blank')
       }
