@@ -122,8 +122,8 @@ export function Service() {
   const { mutateAsync: updateService } = useUpdateService()
   const { mutateAsync: addService } = useAddService()
   const { mutateAsync: addStaffToService } = useAddStaffToService(info?.id!)
-const {data:staffs} = useGetAllStaffByBusinessId(user?.business?.id)
-console.log("staffs",staffs);
+  const {data:staffs} = useGetAllStaffByBusinessId(user?.business?.id)
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

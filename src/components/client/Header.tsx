@@ -1,8 +1,10 @@
-import { useGetClientMe, useGetClientTable } from '@/hooks/client'
-import { useClientStore } from '@/store/use-client-store'
-import { User } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router';
+import { useClientStore } from '@/store/use-client-store';
+import { User } from 'lucide-react';
+import { useGetClientMe, useGetClientTable } from '@/hooks/client';
+import { ThemeSwitch } from '../theme-switch'
 import { Button } from '../ui/button'
-import { useNavigate } from '@tanstack/react-router'
+
 
 export const ClientHeader = () => {
   const { token } = useClientStore()
@@ -25,6 +27,7 @@ export const ClientHeader = () => {
         </ul>
 
         <div className='flex items-center gap-3'>
+          <ThemeSwitch />
           {token ? (
             <Button 
               variant='ghost' 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Minus,
   Plus,
@@ -7,17 +7,18 @@ import {
   ArrowLeft,
   Package,
   Loader2,
+  ExternalLink,
+  CheckCircle2,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+import { useCreateBooking } from '@/hooks/booking'
+import { useSocket } from '@/context/socket-context'
+import { useCartStore } from '@/store/use-cart-store'
+import { useClientStore } from '@/store/use-client-store'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { Badge } from '../ui/badge'
-import { useCreateOrder, useGetOrderStatus } from '@/hooks/order'
-import { useSocket } from '@/context/socket-context'
 import { Modal } from '../ui/modal'
-import { ExternalLink, CheckCircle2 } from 'lucide-react'
-import { useCartStore } from '@/store/use-cart-store'
-import { useClientStore } from '@/store/use-client-store'
-import { useNavigate } from '@tanstack/react-router'
 
 interface KarzinkaProps {
   services: any
@@ -25,16 +26,25 @@ interface KarzinkaProps {
   onOrder: () => void
 }
 
-export const Karzinka = ({
-  onBack,
-  onOrder,
-}: KarzinkaProps) => {
-  const { items: cartItems, updateQty, removeFromCart, totalPrice, totalItems } = useCartStore()
-  const { setClient, tableId } = useClientStore()
+export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
+  const {
+    items: cartItems,
+    updateQty,
+    removeFromCart,
+    totalPrice,
+    totalItems,
+  } = useCartStore()
+  const {
+    setAuth,
+    tableId,
+    token,
+    orderSessionId,
+    setOrderSessionId,
+  } = useClientStore()
   const navigate = useNavigate()
-  const { mutateAsync: createOrder } = useCreateOrder()
+  const { mutateAsync: createBooking } = useCreateBooking()
   const socket = useSocket() as any
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(() => {
     return localStorage.getItem('showConfirmModal') === 'true'
@@ -43,14 +53,9 @@ export const Karzinka = ({
     const saved = localStorage.getItem('pendingOrder')
     return saved ? JSON.parse(saved) : null
   })
-  
-  const processedOrderIdRef = useRef<string | null>(null)
 
-  // Start polling if we have a pending order that isn't confirmed yet
-  const { data: orderStatusData } = useGetOrderStatus(
-    pendingOrder?.id, 
-    !!pendingOrder && pendingOrder.status !== 'CONFIRMED' && showConfirmModal
-  )
+  const processedOrderIdRef = useRef<string | null>(null)
+  const pendingBookingKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (pendingOrder) {
@@ -62,104 +67,140 @@ export const Karzinka = ({
     localStorage.setItem('showConfirmModal', String(showConfirmModal))
   }, [pendingOrder, showConfirmModal])
 
-  // Unified confirmation handler to prevent duplicate side effects
-  const handleConfirmAction = (orderData: any) => {
-    const orderId = orderData.id || orderData.orderId
-    
-    // Lock: only run side effects once per order ID
-    if (processedOrderIdRef.current === orderId) return
-    processedOrderIdRef.current = orderId
+  const handleConfirmAction = (bookingData: any) => {
+    const bookingId = bookingData.id
+    if (processedOrderIdRef.current === bookingId) return
+    processedOrderIdRef.current = bookingId
 
-    
-    // 1. Update local state
     setPendingOrder((prev: any) => {
       if (prev?.status === 'CONFIRMED') return prev
-      return { ...prev, ...orderData, status: 'CONFIRMED' }
+      return { ...prev, ...bookingData, status: 'CONFIRMED' }
     })
-    
-    // 2. Save client session
-    if (orderData.token) {
-      setClient({ 
-        token: orderData.token, 
-        phone: orderData.phone,
-        fullName: 'Mijoz',
-        clientId: orderData.clientId,
-      })
-      // Legacy support/External scripts
-      localStorage.setItem('token', orderData.token)
-    }
-    
-    // 3. Side effects
-    onOrder() // Clear cart
-      
-    // 4. Navigation
+
+    onOrder()
+
     setTimeout(() => {
       setShowConfirmModal(false)
       navigate({ to: '/client/profile' as any })
     }, 2000)
   }
 
-  // Effect for Polling
-  useEffect(() => {
-    const orderData = orderStatusData?.data
-    if (orderData && orderData.status === 'CONFIRMED') {
-      handleConfirmAction(orderData)
-    }
-  }, [orderStatusData?.data?.status]) // Only react to status changes in polling data
+  const submitAuthorizedBooking = async (idempotencyKey: string) => {
+    const formatItemNote = (item: any) => {
+      const labels: string[] = []
 
-  // Effect for Socket
-  useEffect(() => {
-    const handleSocketConfirm = (data: any) => {
-      console.log('📡 Socket sync: Order confirmed', data)
-      handleConfirmAction(data)
+      if (item.options?.liter) {
+        labels.push(`${item.options.liter}L`)
+      }
+
+      if (item.options?.teaOptions) {
+        labels.push(
+          `${item.options.teaOptions.teaColor}${
+            item.options.teaOptions.lemon ? ' + limon' : ''
+          }`
+        )
+      }
+
+      return labels.join(', ') || undefined
     }
 
-    if (socket) {
-      socket.on('order:confirmed', handleSocketConfirm)
-      return () => {
-        socket.off('order:confirmed', handleSocketConfirm)
+    const result = await createBooking({
+      tableId: tableId!,
+      idempotencyKey,
+      items: cartItems.map((item: any) => ({
+        productId: item.serviceId,
+        qty: item.qty,
+        priceSnapshot: item.priceSnapshot,
+        note: formatItemNote(item),
+      })),
+    })
+
+    const bookingData = result.data
+    const confirmedOrder = {
+      id: bookingData.id,
+      status: 'CONFIRMED',
+    }
+    setPendingOrder(confirmedOrder)
+    setShowConfirmModal(true)
+    handleConfirmAction(confirmedOrder)
+  }
+
+  const openTelegramLink = (telegramAppLink?: string, telegramLink?: string) => {
+    const targetLink = telegramAppLink || telegramLink
+    if (!targetLink) return
+    window.open(targetLink, '_blank')
+  }
+
+  useEffect(() => {
+    const handleAuthToken = async (data: any) => {
+      if (!data || data.tableId !== tableId) return
+      if (orderSessionId && data.orderSessionId !== orderSessionId) return
+
+      setAuth({
+        token: data.token,
+        user: data.user,
+      })
+      localStorage.setItem('token', data.token)
+      setOrderSessionId(null)
+
+      try {
+        const idempotencyKey =
+          pendingBookingKeyRef.current ?? crypto.randomUUID()
+        pendingBookingKeyRef.current = idempotencyKey
+        await submitAuthorizedBooking(idempotencyKey)
+      } catch (error) {
+        console.error('Booking creation after Telegram auth failed:', error)
+        alert(
+          'Tasdiqlangandan keyin booking yaratib bo‘lmadi. Qayta urinib ko‘ring.'
+        )
       }
     }
-  }, [socket]) // Socket is stable, bound once
+
+    if (!socket) return
+
+    socket.on('auth:token', handleAuthToken)
+    return () => {
+      socket.off('auth:token', handleAuthToken)
+    }
+  }, [socket, tableId, orderSessionId, cartItems, createBooking, setAuth, setOrderSessionId])
 
   const handleSubmit = async () => {
     if (isSubmitting || !tableId) return
     setIsSubmitting(true)
 
     try {
-      const result = await createOrder({ tableId, items: cartItems })
-      const orderData = result.data
+      const idempotencyKey = pendingBookingKeyRef.current ?? crypto.randomUUID()
+      pendingBookingKeyRef.current = idempotencyKey
 
-      // ── Already authenticated: backend confirmed immediately ──
-      if (orderData.confirmed) {
-        const confirmedOrder = {
-          id: orderData.orderId,
-          status: 'CONFIRMED',
-          etaMinutes: orderData.etaMinutes,
-          token: orderData.token,
-          phone: orderData.phone,
-        }
-        setPendingOrder(confirmedOrder)
-        setShowConfirmModal(true)
-        handleConfirmAction({ ...confirmedOrder, orderId: confirmedOrder.id })
+      if (token) {
+        await submitAuthorizedBooking(idempotencyKey)
         return
       }
 
-      // ── Unauthenticated: redirect to Telegram for confirmation ──
-      const newPendingOrder = {
-        id: orderData.orderId,
-        telegramUrl: orderData.telegramUrl,
-        status: 'PENDING_CONFIRM',
-      }
-      setPendingOrder(newPendingOrder)
-      setShowConfirmModal(true)
+      socket.emit('order:start', { tableId }, (response: any) => {
+        if (!response?.success) {
+          alert(
+            response?.error?.message || 'Telegram sessiyasini boshlab bo‘lmadi.'
+          )
+          return
+        }
 
-      if (orderData.telegramUrl) {
-        window.open(orderData.telegramUrl, '_blank')
-      }
+        const sessionData = response.data
+        setOrderSessionId(sessionData.orderSessionId)
+        const newPendingOrder = {
+          id: sessionData.orderSessionId,
+          telegramAppUrl: sessionData.telegramAppLink,
+          telegramUrl: sessionData.telegramLink,
+          status: 'AWAITING_TELEGRAM',
+        }
+        setPendingOrder(newPendingOrder)
+        setShowConfirmModal(true)
+
+        openTelegramLink(sessionData.telegramAppLink, sessionData.telegramLink)
+      })
     } catch (error) {
       console.error('Buyurtma yuborishda xatolik:', error)
-      alert('Buyurtma yuborishda xatolik yuz berdi. Qayta urinib ko\'ring.')
+      alert("Buyurtma yuborishda xatolik yuz berdi. Qayta urinib ko'ring.")
     } finally {
       setIsSubmitting(false)
     }
@@ -192,23 +233,20 @@ export const Karzinka = ({
   return (
     <div className='mt-20 flex w-full flex-col items-center pb-32'>
       <div className='w-full max-w-3xl px-4'>
-        {/* Header */}
         <div className='mb-6 flex items-center justify-between'>
           <div className='flex items-center gap-3'>
             <ShoppingCart className='h-6 w-6 text-primary' />
-            <h1 className='text-2xl font-bold tracking-tight'>Sizning savatchangiz</h1>
+            <h1 className='text-2xl font-bold tracking-tight'>
+              Sizning savatchangiz
+            </h1>
           </div>
-          <Badge
-            variant='secondary'
-            className='px-3 py-1 text-sm font-semibold'
-          >
+          <Badge variant='secondary' className='px-3 py-1 text-sm font-semibold'>
             {totalItems} ta mahsulot
           </Badge>
         </div>
 
-        {/* Cart Items */}
         <div className='space-y-3'>
-          {cartItems.map((item) => {
+          {cartItems.map((item: any) => {
             const itemTotal = item.priceSnapshot * item.qty
 
             return (
@@ -217,7 +255,6 @@ export const Karzinka = ({
                 className='overflow-hidden border-border/60 transition-all duration-200 hover:shadow-md'
               >
                 <div className='flex gap-4 p-4'>
-                  {/* Image */}
                   <div className='h-20 w-20 shrink-0 overflow-hidden rounded-xl'>
                     <img
                       src={item.service.photoUrl}
@@ -226,17 +263,20 @@ export const Karzinka = ({
                     />
                   </div>
 
-                  {/* Info + Controls */}
                   <div className='flex min-w-0 flex-1 flex-col justify-between'>
                     <div className='flex items-start justify-between gap-2'>
                       <div className='min-w-0'>
                         <h3 className='truncate text-base font-semibold'>
                           {item.service.name}
                         </h3>
-                        <div className='flex flex-wrap gap-1 mt-1'>
+                        <div className='mt-1 flex flex-wrap gap-1'>
                           {item.options.teaOptions && (
-                            <Badge variant='outline' className='text-[10px] bg-primary/5 uppercase'>
-                              {item.options.teaOptions.teaColor} {item.options.teaOptions.lemon && '+ Limon'}
+                            <Badge
+                              variant='outline'
+                              className='bg-primary/5 text-[10px] uppercase'
+                            >
+                              {item.options.teaOptions.teaColor}{' '}
+                              {item.options.teaOptions.lemon && '+ Limon'}
                             </Badge>
                           )}
                           {item.options.liter && (
@@ -245,7 +285,7 @@ export const Karzinka = ({
                             </Badge>
                           )}
                         </div>
-                        <p className='truncate text-xs text-muted-foreground italic mt-1'>
+                        <p className='mt-1 truncate text-xs italic text-muted-foreground'>
                           {item.service.description}
                         </p>
                       </div>
@@ -296,7 +336,6 @@ export const Karzinka = ({
           })}
         </div>
 
-        {/* Summary */}
         <Card className='mt-6 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 p-5'>
           <div className='flex items-center justify-between'>
             <div>
@@ -313,7 +352,6 @@ export const Karzinka = ({
         </Card>
       </div>
 
-      {/* Confirmation Modal */}
       <Modal
         open={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -326,16 +364,13 @@ export const Karzinka = ({
                 <CheckCircle2 className='h-12 w-12 text-emerald-500' />
               </div>
               <div className='space-y-2'>
-                <h3 className='text-xl font-bold'>Buyurtmangiz qabul qilindi!</h3>
+                <h3 className='text-xl font-bold'>Booking qabul qilindi</h3>
                 <p className='text-muted-foreground'>
-                  Taomlar tayyorlanmoqda. Taxminiy vaqt:{' '}
-                  <span className='font-bold text-foreground'>
-                    {pendingOrder.etaMinutes} daqiqa
-                  </span>
+                  Profil sahifasida buyurtma holatini ko'rishingiz mumkin.
                 </p>
               </div>
-              <Button 
-                className='w-full' 
+              <Button
+                className='w-full'
                 onClick={() => {
                   setShowConfirmModal(false)
                   navigate({ to: '/client/profile' as any })
@@ -347,24 +382,29 @@ export const Karzinka = ({
           ) : (
             <>
               <div className='rounded-full bg-blue-100 p-4 animate-pulse dark:bg-blue-500/10'>
-                <Loader2 className='h-12 w-12 text-blue-500 animate-spin' />
+                <Loader2 className='h-12 w-12 animate-spin text-blue-500' />
               </div>
               <div className='space-y-2'>
                 <h3 className='text-xl font-bold'>Telegram orqali tasdiqlang</h3>
                 <p className='text-muted-foreground'>
-                  Buyurtmangizni yakunlash uchun Telegram botimizda telefon raqamingizni yuboring.
+                  Davom etish uchun Telegram botda telefon raqamingizni yuboring.
                 </p>
               </div>
               <div className='flex w-full flex-col gap-2'>
-                <Button 
-                  className='w-full gap-2' 
-                  onClick={() => window.open(pendingOrder?.telegramUrl, '_blank')}
+                <Button
+                  className='w-full gap-2'
+                  onClick={() =>
+                    openTelegramLink(
+                      pendingOrder?.telegramAppUrl,
+                      pendingOrder?.telegramUrl
+                    )
+                  }
                 >
                   <ExternalLink className='h-4 w-4' />
-                  Telegram Botga o'tish
+                  Telegram botga o'tish
                 </Button>
-                <Button 
-                  variant='outline' 
+                <Button
+                  variant='outline'
                   className='w-full'
                   onClick={() => setShowConfirmModal(false)}
                 >
@@ -376,7 +416,6 @@ export const Karzinka = ({
         </div>
       </Modal>
 
-      {/* Bottom fixed buttons */}
       <div className='animate-in slide-in-from-bottom-5 fixed bottom-10 flex gap-4'>
         <Button
           size='lg'

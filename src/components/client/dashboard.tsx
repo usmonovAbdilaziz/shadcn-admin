@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useGetClientBusiness, useGetClientTable } from '@/hooks/client'
+import { useGetClientBusiness, useGetClientMe, useGetClientTable } from '@/hooks/client'
 import { Button } from '../ui/button'
 import { Modal } from '../ui/modal'
 import {
@@ -110,10 +110,14 @@ export const ClientDashboard = () => {
   const [open, setOpen] = useState(false)
   const [selectBusinessId, setSelectBusinessId] = useState<string>('')
   const businesses = useGetClientBusiness()
+  const token = useClientStore((s) => s.token)
   const tableId = useClientStore((s) => s.tableId)
+  const logout = useClientStore((s) => s.logout)
   const setTableId = useClientStore((s) => s.setTableId)
   const setBusinessId = useClientStore((s) => s.setBusinessId)
+  const setAuth = useClientStore((s) => s.setAuth)
   const { data: tables } = useGetClientTable({ businessId: selectBusinessId })
+  const meQuery = useGetClientMe(token || '')
   const matchRoute = useMatchRoute()
   const navigate = useNavigate()
   const routerState = useRouterState()
@@ -139,6 +143,20 @@ export const ClientDashboard = () => {
       setBusinessId(selectBusinessId)
     }
   }, [selectBusinessId, setBusinessId])
+  useEffect(() => {
+    if (!token) return
+    if (meQuery.isError) {
+      logout()
+      return
+    }
+
+    if (meQuery.data?.data) {
+      setAuth({
+        token,
+        user: meQuery.data.data,
+      })
+    }
+  }, [token, meQuery.isError, meQuery.data, logout, setAuth])
   const findTable = () => {
     if (!selectedTableId) return
     setTableId(selectedTableId)

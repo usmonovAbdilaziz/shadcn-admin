@@ -1,14 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
-import { ShoppingBag } from 'lucide-react'
-import { useGetClientMe, useGetClientServices } from '@/hooks/client'
-import { Button } from '../ui/button'
-import { Drinks } from './drinks'
-import { HotMeals } from './hot-meals'
-import { Karzinka } from './Karzinka'
-import { Salads } from './salads'
-import { Sweets } from './sweeds'
-import { useCartStore } from '@/store/use-cart-store'
-import { useClientStore } from '@/store/use-client-store'
+import { useEffect, useState, useCallback } from 'react';
+import { useCartStore } from '@/store/use-cart-store';
+import { useClientStore } from '@/store/use-client-store';
+import { ShoppingBag } from 'lucide-react';
+import { useGetClientMe, useGetClientServices } from '@/hooks/client';
+import { Button } from '../ui/button';
+import { Karzinka } from './Karzinka';
+import { Drinks } from './drinks';
+import { HotMeals } from './hot-meals';
+import { Salads } from './salads';
+import { Sweets } from './sweeds';
+
 
 type Category = 'FOODS' | 'DRINKS' | 'SWEETS' | 'SALADS'
 
@@ -41,6 +42,7 @@ export const ClientBody = () => {
   const [count, setCount] = useState(loadCategoryIndex)
   const { items: cartItems, clearCart, totalItems, syncTotals } = useCartStore()
   const { data: client } = useGetClientMe(token!)
+  console.log('businessId', businessId)
 
   useEffect(() => {
     const clientId = client?.data?.id || client?.id
