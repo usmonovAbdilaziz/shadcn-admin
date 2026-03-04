@@ -22,9 +22,6 @@ import { Route as BusinessBookingRouteImport } from './routes/business/booking'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminServiceRouteImport } from './routes/admin/service'
 import { Route as AdminBusinessRouteImport } from './routes/admin/business'
-import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
-import { Route as AuthenticatedBusinessRouteImport } from './routes/_authenticated/business'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -102,21 +99,6 @@ const AdminBusinessRoute = AdminBusinessRouteImport.update({
   path: '/admin/business',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
-  id: '/staff',
-  path: '/staff',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedBusinessRoute = AuthenticatedBusinessRouteImport.update({
-  id: '/business',
-  path: '/business',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const errors503Route = errors503RouteImport.update({
   id: '/(errors)/503',
   path: '/503',
@@ -181,7 +163,6 @@ const AuthenticatedErrorsErrorRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedRouteRouteWithChildren
   '/client': typeof ClientRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
@@ -193,9 +174,6 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/admin': typeof AuthenticatedAdminRoute
-  '/business': typeof AuthenticatedBusinessRoute
-  '/staff': typeof AuthenticatedStaffRoute
   '/admin/business': typeof AdminBusinessRoute
   '/admin/service': typeof AdminServiceRoute
   '/admin/users': typeof AdminUsersRoute
@@ -204,28 +182,24 @@ export interface FileRoutesByFullPath {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
-  '/admin/': typeof AdminIndexRoute
-  '/business/': typeof BusinessIndexRoute
-  '/staff/': typeof StaffIndexRoute
-  '/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
-}
-export interface FileRoutesByTo {
-  '/': typeof AuthenticatedRouteRouteWithChildren
-  '/client': typeof ClientRouteWithChildren
-  '/forgot-password': typeof authForgotPasswordRoute
-  '/otp': typeof authOtpRoute
-  '/sign-in': typeof authSignInRoute
-  '/sign-in-2': typeof authSignIn2Route
-  '/sign-up': typeof authSignUpRoute
-  '/401': typeof errors401Route
-  '/403': typeof errors403Route
-  '/404': typeof errors404Route
-  '/500': typeof errors500Route
-  '/503': typeof errors503Route
   '/admin': typeof AdminIndexRoute
   '/business': typeof BusinessIndexRoute
   '/staff': typeof StaffIndexRoute
+  '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/help-center': typeof AuthenticatedHelpCenterIndexRoute
+}
+export interface FileRoutesByTo {
+  '/client': typeof ClientRouteWithChildren
+  '/forgot-password': typeof authForgotPasswordRoute
+  '/otp': typeof authOtpRoute
+  '/sign-in': typeof authSignInRoute
+  '/sign-in-2': typeof authSignIn2Route
+  '/sign-up': typeof authSignUpRoute
+  '/401': typeof errors401Route
+  '/403': typeof errors403Route
+  '/404': typeof errors404Route
+  '/500': typeof errors500Route
+  '/503': typeof errors503Route
   '/admin/business': typeof AdminBusinessRoute
   '/admin/service': typeof AdminServiceRoute
   '/admin/users': typeof AdminUsersRoute
@@ -234,6 +208,9 @@ export interface FileRoutesByTo {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
+  '/admin': typeof AdminIndexRoute
+  '/business': typeof BusinessIndexRoute
+  '/staff': typeof StaffIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
 }
@@ -251,9 +228,6 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/business': typeof AuthenticatedBusinessRoute
-  '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/admin/business': typeof AdminBusinessRoute
   '/admin/service': typeof AdminServiceRoute
   '/admin/users': typeof AdminUsersRoute
@@ -271,7 +245,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/client'
     | '/forgot-password'
     | '/otp'
@@ -283,9 +256,6 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
-    | '/admin'
-    | '/business'
-    | '/staff'
     | '/admin/business'
     | '/admin/service'
     | '/admin/users'
@@ -294,14 +264,13 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
-    | '/admin/'
-    | '/business/'
-    | '/staff/'
+    | '/admin'
+    | '/business'
+    | '/staff'
     | '/errors/$error'
-    | '/help-center/'
+    | '/help-center'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/client'
     | '/forgot-password'
     | '/otp'
@@ -313,9 +282,6 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
-    | '/admin'
-    | '/business'
-    | '/staff'
     | '/admin/business'
     | '/admin/service'
     | '/admin/users'
@@ -324,6 +290,9 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
+    | '/admin'
+    | '/business'
+    | '/staff'
     | '/errors/$error'
     | '/help-center'
   id:
@@ -340,9 +309,6 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
-    | '/_authenticated/admin'
-    | '/_authenticated/business'
-    | '/_authenticated/staff'
     | '/admin/business'
     | '/admin/service'
     | '/admin/users'
@@ -395,28 +361,28 @@ declare module '@tanstack/react-router' {
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/staff/': {
       id: '/staff/'
       path: '/staff'
-      fullPath: '/staff/'
+      fullPath: '/staff'
       preLoaderRoute: typeof StaffIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/business/': {
       id: '/business/'
       path: '/business'
-      fullPath: '/business/'
+      fullPath: '/business'
       preLoaderRoute: typeof BusinessIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
-      fullPath: '/admin/'
+      fullPath: '/admin'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -475,27 +441,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/business'
       preLoaderRoute: typeof AdminBusinessRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/staff': {
-      id: '/_authenticated/staff'
-      path: '/staff'
-      fullPath: '/staff'
-      preLoaderRoute: typeof AuthenticatedStaffRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/business': {
-      id: '/_authenticated/business'
-      path: '/business'
-      fullPath: '/business'
-      preLoaderRoute: typeof AuthenticatedBusinessRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/(errors)/503': {
       id: '/(errors)/503'
@@ -570,7 +515,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated/help-center/': {
       id: '/_authenticated/help-center/'
       path: '/help-center'
-      fullPath: '/help-center/'
+      fullPath: '/help-center'
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
@@ -585,17 +530,11 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedBusinessRoute: typeof AuthenticatedBusinessRoute
-  AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedBusinessRoute: AuthenticatedBusinessRoute,
-  AuthenticatedStaffRoute: AuthenticatedStaffRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
 }

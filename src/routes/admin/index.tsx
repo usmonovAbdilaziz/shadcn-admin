@@ -1,6 +1,6 @@
 "use client"
 import { createFileRoute } from '@tanstack/react-router'
-import { AdminDashboard } from './dashboard'
+import { AdminDashboard } from '@/features/admin/dashboard'
 
 export const Route = createFileRoute('/admin/')({
   component: RouteComponent,
