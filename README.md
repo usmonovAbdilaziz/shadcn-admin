@@ -97,7 +97,9 @@ Start the server
 ```bash
   pnpm run dev
 ```
-
+```
+npm run generate:routes
+```
 ## Sponsoring this project ❤️
 
 If you find this project helpful or use this in your own work, consider [sponsoring me](https://github.com/sponsors/satnaing) to support development and maintenance. You can [buy me a coffee](https://buymeacoffee.com/satnaing) as well. Don’t worry, every penny helps. Thank you! 🙏

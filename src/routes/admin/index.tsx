@@ -1,6 +1,8 @@
+"use client"
 import { createFileRoute } from '@tanstack/react-router'
+import { AdminDashboard } from './dashboard'
 
-export const Route = createFileRoute('/_authenticated/admin/')({
+export const Route = createFileRoute('/admin/')({
   component: RouteComponent,
 })
 
@@ -9,5 +11,5 @@ function RouteComponent() {
   if(user.userType !== 'ADMIN') {
     window.location.href = '/business'
   }
-  return <div>Hello "/_authenticated/admin/"! {user.fullName}</div>
+  return <AdminDashboard/>
 }

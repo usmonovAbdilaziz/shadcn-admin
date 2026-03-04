@@ -1,12 +1,12 @@
+"use client"
 import { createFileRoute } from '@tanstack/react-router'
-import { StaffPage } from '@/components/business/staff-page'
+import { Dashboard } from '@/routes/business/dashboard'
 
-export const Route = createFileRoute('/_authenticated/business/users')({
+export const Route = createFileRoute('/business/')({
   component: RouteComponent,
 })
-
 function RouteComponent() {
-    const user =JSON.parse(localStorage.getItem("user")!)
+  const user =JSON.parse(localStorage.getItem("user")!)
   if(user){
     if(user.userType !== 'BUSINESS') {
       window.location.href = '/admin'
@@ -15,8 +15,8 @@ function RouteComponent() {
       window.location.href = '/'
   }
   return (
-    <div>
-      <StaffPage />
-    </div>
+    <>
+      <Dashboard />
+    </>
   )
 }

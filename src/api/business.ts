@@ -137,9 +137,16 @@ export const addStaffToService = async (serviceId: string,data:any) => {
   })
   return res.data
 }
-export const allBusinessBooking = async (businessId: string) => {
+export const allBusinessBooking = async (
+  businessId: string,
+  params?: { page?: number; size?: number }
+) => {
   const token = localStorage.getItem('token')
   const res = await axios.get(`${baseApiv1}/booking/business/${businessId}`, {
+    params: {
+      page: params?.page,
+      size: params?.size,
+    },
     headers: {
       Authorization: `Bearer ${token}`,
     },

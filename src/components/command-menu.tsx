@@ -16,6 +16,7 @@ import { sidebarBusinessData } from '@/components/layout/data/sidebar-business-d
 import { ScrollArea } from './ui/scroll-area'
 import { SidebarData } from './layout/types'
 import { sidebarAdminData } from '@/components/layout/data/sidebar-admin-data'
+import { sidebarStaffData } from './layout/data/sidebar-staff-data'
 
 export function CommandMenu() {
   const [sidebarData,setSidebarData]=useState<SidebarData>()
@@ -26,6 +27,8 @@ export function CommandMenu() {
         setSidebarData(sidebarBusinessData)
       }else if(user.userType==="ADMIN"){
         setSidebarData(sidebarAdminData)
+      }else if(user.userType==="STAFF"){
+        setSidebarData(sidebarStaffData)
       }
     }
   },[user])

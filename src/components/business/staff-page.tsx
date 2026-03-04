@@ -1,72 +1,26 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { ScrollArea } from '@radix-ui/react-scroll-area'
-import { Separator } from '@radix-ui/react-separator'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Position } from '@/types/business'
-import {
-  Check,
-  Loader2,
-  MoreHorizontal,
-  X,
-  Save,
-  Pencil,
-  Trash2,
-  Eye,
-  Briefcase,
-  Clock,
-  Info,
-  ThumbsUp,
-  Workflow,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
-import {
-  useAddStaff,
-  useDeleteStaff,
-  useGetAllServices,
-  useGetAllStaffs,
-  useUpdateStaff,
-} from '@/hooks/business'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Modal } from '@/components/ui/modal'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '../ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { useState } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { ScrollArea } from '@radix-ui/react-scroll-area';
+import { Separator } from '@radix-ui/react-separator';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Position } from '@/types/business';
+import { Check, Loader2, MoreHorizontal, X, Save, Pencil, Trash2, Eye, Briefcase, Clock, Info, ThumbsUp, Workflow } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { useAddStaff, useDeleteStaff, useGetAllServices, useGetAllStaffs, useUpdateStaff } from '@/hooks/business';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '../ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+
 
 interface Service {
   businessId: string
@@ -103,6 +57,7 @@ const formSchema = z.object({
   }),
   phoneNumber: z
     .string()
+    .regex(/^\+998\d{9}$/, 'Phone must be in +998XXXXXXXXX format')
     .min(1, 'Please enter your phoneNumber')
     .min(9, 'Phone number must be at least 9 characters long'),
   position: z.nativeEnum(Position),
