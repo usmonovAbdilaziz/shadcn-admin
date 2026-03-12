@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { Loader2, LogIn } from 'lucide-react';
-import { toast } from 'sonner';
-import { IconFacebook, IconGithub } from '@/assets/brand-icons';
-import { cn } from '@/lib/utils';
-import { useLogin, useStaffLogin } from '@/hooks/sign';
-import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { PasswordInput } from '@/components/password-input';
-
+import { useForm, type FieldErrors } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { Loader2, LogIn } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { z } from 'zod'
+import { IconFacebook, IconGithub } from '@/assets/brand-icons'
+import { PasswordInput } from '@/components/password-input'
+import { Button } from '@/components/ui/button'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { useLogin, useStaffLogin } from '@/hooks/sign'
+import { getStaffRouteTarget } from '@/lib/staff-position'
+import { cn } from '@/lib/utils'
 
 const formSchema = z
   .object({
@@ -62,6 +69,7 @@ const formSchema = z
           path: ['fullName'],
         })
       }
+
       if (!data.phoneNumber) {
         ctx.addIssue({
           code: 'custom',
@@ -72,8 +80,93 @@ const formSchema = z
     }
   })
 
+type FormValues = z.infer<typeof formSchema>
+
+type AuthUser = Record<string, unknown> & {
+  userType?: string
+  type?: string
+  position?: string | null
+}
+
+type AuthResponseBody = {
+  token?: string
+  user?: unknown
+  staff?: unknown
+  data?: unknown
+}
+
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const toAuthUser = (value: unknown): AuthUser | null => {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  return value as AuthUser
+}
+
+const toAuthResponseBody = (value: unknown): AuthResponseBody | null => {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  return value as AuthResponseBody
+}
+
+const parseAuthResponse = (value: unknown) => {
+  const root = toAuthResponseBody(value)
+  const nested = toAuthResponseBody(root?.data)
+
+  return {
+    token: root?.token || nested?.token || null,
+    user:
+      toAuthUser(root?.user) ||
+      toAuthUser(root?.staff) ||
+      toAuthUser(nested?.user) ||
+      toAuthUser(nested?.staff),
+  }
+}
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  if (
+    isRecord(error) &&
+    typeof error.message === 'string' &&
+    error.message.length > 0
+  ) {
+    return error.message
+  }
+
+  return 'Login failed'
+}
+
+const collectFormErrors = (errors: FieldErrors<FormValues>) => {
+  const messages: string[] = []
+
+  for (const value of Object.values(errors)) {
+    if (!value || !isRecord(value)) {
+      continue
+    }
+
+    if (typeof value.message === 'string') {
+      messages.push(value.message)
+      continue
+    }
+
+    if (isRecord(value.types)) {
+      messages.push(...Object.values(value.types).map(String))
+    }
+  }
+
+  return messages
 }
 
 export function UserAuthForm({
@@ -86,7 +179,7 @@ export function UserAuthForm({
   const navigate = useNavigate()
   const { mutateAsync } = useLogin()
   const { mutateAsync: staffLogin } = useStaffLogin()
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       mode: 'business',
@@ -96,74 +189,120 @@ export function UserAuthForm({
       phoneNumber: '',
     },
   })
-  useEffect(() => {}, [])
 
   const normalizePhone = (value: string) => {
-    const digits = (value || '').replace(/\D/g, '')
-    if (digits.startsWith('998') && digits.length === 12) return `+${digits}`
-    if (digits.length === 9) return `+998${digits}`
-    if (digits.length === 12) return `+${digits}`
+    const digits = value.replace(/\D/g, '')
+
+    if (digits.startsWith('998') && digits.length === 12) {
+      return `+${digits}`
+    }
+
+    if (digits.length === 9) {
+      return `+998${digits}`
+    }
+
+    if (digits.length === 12) {
+      return `+${digits}`
+    }
+
     return digits ? `+${digits}` : ''
   }
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-    if (mode === 'staff') {
-      const payload = {
-        fullName: data.fullName || '',
-        phoneNumber: normalizePhone(data.phoneNumber || ''),
-      }
-      staffLogin(payload, {
-        onSuccess: (resp) => {
-          setIsLoading(false)
-          // backend responses sometimes wrapped in { success, data } — handle both shapes
-          const body = (resp && (resp as any).data) || resp || {}
-          const token =
-            (body && (body.token || body.data?.token)) || (resp as any).token
-          const user = body.user || body.staff || body.data?.user || null
-          if (token) localStorage.setItem('token', token)
-          if (user) {
-            // Ensure staff responses include a userType so route guards work
-            if (!(user as any).userType) (user as any).userType = 'STAFF'
-            localStorage.setItem('user', JSON.stringify(user))
-          }
-          navigate({ to: '/staff', replace: true })
-        },
-        onError: (error: any) => {
-          setIsLoading(false)
-          toast.error(error?.message || 'Login failed')
-        },
+  const navigateByRole = (user: AuthUser | null) => {
+    const role = user?.userType || user?.type || null
+
+    if (role === 'STAFF') {
+      navigate({
+        ...getStaffRouteTarget(user?.position),
+        replace: true,
       })
       return
     }
 
-    mutateAsync(
-      { email: data.email || '', password: data.password || '' },
-      {
-        onSuccess: (resp) => {
-          setIsLoading(false)
-          const body = (resp && (resp as any).data) || resp || {}
-          const token =
-            (body && (body.token || body.data?.token)) || (resp as any).token
-          const user = body.user || body.data?.user || null
-          if (token) localStorage.setItem('token', token)
-          if (user) localStorage.setItem('user', JSON.stringify(user))
-          const role = (user?.userType || (user as any)?.type) as string
-          if (role === 'STAFF') {
-            navigate({ to: '/staff', replace: true })
-          } else if (role === 'BUSINESS') {
-            navigate({ to: '/business', replace: true })
-          } else if (role === 'ADMIN') {
-            navigate({ to: '/admin', replace: true })
-          } else if (role === 'CLIENT') {
-            navigate({ to: '/client', replace: true })
-          } else if (redirectTo) {
-            navigate({ to: redirectTo as any, replace: true })
-          }
+    if (role === 'BUSINESS') {
+      navigate({ to: '/business', replace: true })
+      return
+    }
+
+    if (role === 'ADMIN') {
+      navigate({ to: '/admin', replace: true })
+      return
+    }
+
+    if (role === 'CLIENT') {
+      navigate({ to: '/client', replace: true })
+      return
+    }
+
+    if (redirectTo) {
+      window.location.replace(redirectTo)
+    }
+  }
+
+  const onSubmit = (data: FormValues) => {
+    setIsLoading(true)
+
+    if (mode === 'staff') {
+      staffLogin(
+        {
+          fullName: data.fullName || '',
+          phoneNumber: normalizePhone(data.phoneNumber || ''),
         },
-        onError: (error: any) => {
+        {
+          onSuccess: (response: unknown) => {
+            setIsLoading(false)
+
+            const { token, user } = parseAuthResponse(response)
+            const normalizedUser =
+              user && !user.userType ? { ...user, userType: 'STAFF' } : user
+
+            if (token) {
+              localStorage.setItem('token', token)
+            }
+
+            if (normalizedUser) {
+              localStorage.setItem('user', JSON.stringify(normalizedUser))
+            }
+
+            navigate({
+              ...getStaffRouteTarget(normalizedUser?.position),
+              replace: true,
+            })
+          },
+          onError: (error: unknown) => {
+            setIsLoading(false)
+            toast.error(getErrorMessage(error))
+          },
+        }
+      )
+
+      return
+    }
+
+    mutateAsync(
+      {
+        email: data.email || '',
+        password: data.password || '',
+      },
+      {
+        onSuccess: (response: unknown) => {
           setIsLoading(false)
-          toast.error(error?.message || 'Login failed')
+
+          const { token, user } = parseAuthResponse(response)
+
+          if (token) {
+            localStorage.setItem('token', token)
+          }
+
+          if (user) {
+            localStorage.setItem('user', JSON.stringify(user))
+          }
+
+          navigateByRole(user)
+        },
+        onError: (error: unknown) => {
+          setIsLoading(false)
+          toast.error(getErrorMessage(error))
         },
       }
     )
@@ -177,24 +316,21 @@ export function UserAuthForm({
 
   const handleSubmitClick = () => {
     toast.message?.(undefined)
+
     try {
-      const onInvalid = (errs: any) => {
-        const msgs: string[] = []
-        for (const k of Object.keys(errs || {})) {
-          const e = errs[k]
-          if (!e) continue
-          if (e.message) msgs.push(String(e.message))
-          else if (e.types) msgs.push(...Object.values(e.types).map(String))
+      const onInvalid = (errors: FieldErrors<FormValues>) => {
+        const messages = collectFormErrors(errors)
+
+        if (messages.length > 0) {
+          toast.error(messages[0])
+          return
         }
-        if (msgs.length) {
-          toast.error(msgs[0])
-        } else {
-          toast.error('Validation failed')
-        }
+
+        toast.error('Validation failed')
       }
 
       form.handleSubmit(onSubmit, onInvalid)()
-    } catch (e) {
+    } catch (_error) {
       // ignore
     }
   }

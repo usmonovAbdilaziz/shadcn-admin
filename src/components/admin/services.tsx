@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select"
-import { Badge } from "../ui/badge"
 import {
   Dialog,
   DialogContent,

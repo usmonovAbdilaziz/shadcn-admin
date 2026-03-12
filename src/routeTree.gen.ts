@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as BusinessIndexRouteImport } from './routes/business/index'
 import { Route as StaffBookingsRouteImport } from './routes/staff/bookings'
+import { Route as StaffPositionRouteImport } from './routes/staff/$position'
 import { Route as ClientProfileRouteImport } from './routes/client/profile'
 import { Route as BusinessUsersRouteImport } from './routes/business/users'
 import { Route as BusinessTableRouteImport } from './routes/business/table'
@@ -75,6 +76,11 @@ const BusinessIndexRoute = BusinessIndexRouteImport.update({
 const StaffBookingsRoute = StaffBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
+  getParentRoute: () => StaffRouteRoute,
+} as any)
+const StaffPositionRoute = StaffPositionRouteImport.update({
+  id: '/$position',
+  path: '/$position',
   getParentRoute: () => StaffRouteRoute,
 } as any)
 const ClientProfileRoute = ClientProfileRouteImport.update({
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
+  '/staff/$position': typeof StaffPositionRoute
   '/staff/bookings': typeof StaffBookingsRoute
   '/business/': typeof BusinessIndexRoute
   '/staff/': typeof StaffIndexRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
+  '/staff/$position': typeof StaffPositionRoute
   '/staff/bookings': typeof StaffBookingsRoute
   '/business': typeof BusinessIndexRoute
   '/staff': typeof StaffIndexRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
+  '/staff/$position': typeof StaffPositionRoute
   '/staff/bookings': typeof StaffBookingsRoute
   '/business/': typeof BusinessIndexRoute
   '/staff/': typeof StaffIndexRoute
@@ -292,6 +301,7 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
+    | '/staff/$position'
     | '/staff/bookings'
     | '/business/'
     | '/staff/'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
+    | '/staff/$position'
     | '/staff/bookings'
     | '/business'
     | '/staff'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
+    | '/staff/$position'
     | '/staff/bookings'
     | '/business/'
     | '/staff/'
@@ -430,6 +442,13 @@ declare module '@tanstack/react-router' {
       path: '/bookings'
       fullPath: '/staff/bookings'
       preLoaderRoute: typeof StaffBookingsRouteImport
+      parentRoute: typeof StaffRouteRoute
+    }
+    '/staff/$position': {
+      id: '/staff/$position'
+      path: '/$position'
+      fullPath: '/staff/$position'
+      preLoaderRoute: typeof StaffPositionRouteImport
       parentRoute: typeof StaffRouteRoute
     }
     '/client/profile': {
@@ -625,11 +644,13 @@ const BusinessRouteRouteWithChildren = BusinessRouteRoute._addFileChildren(
 )
 
 interface StaffRouteRouteChildren {
+  StaffPositionRoute: typeof StaffPositionRoute
   StaffBookingsRoute: typeof StaffBookingsRoute
   StaffIndexRoute: typeof StaffIndexRoute
 }
 
 const StaffRouteRouteChildren: StaffRouteRouteChildren = {
+  StaffPositionRoute: StaffPositionRoute,
   StaffBookingsRoute: StaffBookingsRoute,
   StaffIndexRoute: StaffIndexRoute,
 }

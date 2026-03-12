@@ -14,15 +14,22 @@ const getBearerConfig = () => {
 }
 export const staffBookings = async (
   position: string,
-  search: string,
-  pagination?: { page: number; size: number },
+  options?: {
+    search?: string
+    status?: string
+    pagination?: { page: number; size: number }
+  }
 ) => {
   const params = new URLSearchParams({ type: position })
-  if (pagination) params.append('page', pagination.page.toString())
-  if (pagination) params.append('size', pagination.size.toString())
+  if (options?.status) {
+    params.append('status', options.status)
+  }
+  if (options?.pagination) {
+    params.append('page', options.pagination.page.toString())
+    params.append('size', options.pagination.size.toString())
+  }
+  const search = options?.search?.trim()
   if (search) {
-    // Simple logic: if it looks like a phone number (start with + or digits only), it's phoneNumber
-    // Otherwise treat as bookingId (assuming CUID/UUID)
     if (/^\+?\d+$/.test(search)) {
       params.append('phoneNumber', search)
     } else {
@@ -36,7 +43,7 @@ export const staffBookings = async (
   )
   return res.data
 }
-export const staffUpdate = async (id: string, data: any) => {
+export const staffUpdate = async (id: string, data: unknown) => {
   const res = await axios.patch(`${staffUrl}/${id}`, data, getBearerConfig())
   return res.data
 }

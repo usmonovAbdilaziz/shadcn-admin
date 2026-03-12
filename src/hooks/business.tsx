@@ -141,7 +141,7 @@ export const useAddStaffToService=(serviceId:string)=>{
 }
 export const useGetAllBooking=(businessId:string, page=1, size=10)=>{
   return useQuery({
-    queryKey: ['bookings', businessId, page, size],
+    queryKey: ['business-bookings', businessId, page, size],
     queryFn: () => allBusinessBooking(businessId, { page, size }),
     staleTime: 5 * 60 * 1000,
     gcTime: 5 * 60 * 1000,

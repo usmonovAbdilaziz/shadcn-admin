@@ -1,12 +1,23 @@
 'use client'
 
-import { createFileRoute } from '@tanstack/react-router'
-import { StaffDashboard } from '@/features/staff/dashboard'
+import { StaffBookings } from '@/components/staff/bookings'
+import {
+  getStaffRouteTarget,
+  getStoredStaffPosition,
+} from '@/lib/staff-position'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/staff/')({
+  beforeLoad: () => {
+    const targetRoute = getStaffRouteTarget(getStoredStaffPosition())
+
+    if (targetRoute.to !== '/staff') {
+      throw redirect(targetRoute)
+    }
+  },
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  return <StaffDashboard />
+  return <StaffBookings />
 }

@@ -12,8 +12,61 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  getBookingConfirmerSummary,
+  getBookingConfirmerTypeLabel,
+} from '@/lib/booking-confirmer'
 
-type Booking = any
+type BookingItem = {
+  id?: string
+  productId?: string
+  serviceId?: string
+  qty?: number
+  priceSnapshot?: number
+  price?: number
+  note?: string | null
+  service?: {
+    name?: string
+  } | null
+  product?: {
+    name?: string
+  } | null
+}
+
+type Booking = {
+  id: string
+  createdAt: string
+  updatedAt: string
+  status: string
+  price?: number | string | null
+  notes?: string | null
+  businessId?: string | null
+  clientId?: string | null
+  staffId?: string | null
+  serviceId?: string | null
+  tableId?: string | null
+  idempotencyKey?: string | null
+  confirmedAt?: string | null
+  confirmedByType?: string | null
+  confirmedByName?: string | null
+  client?: {
+    fullName?: string | null
+    phoneNumber?: string | null
+    [key: string]: unknown
+  } | null
+  staff?: {
+    [key: string]: unknown
+  } | null
+  table?: {
+    tableNumber?: number | null
+    tableColumns?: string | null
+    [key: string]: unknown
+  } | null
+  service?: {
+    [key: string]: unknown
+  } | null
+  items?: BookingItem[]
+}
 
 type BookingTableProps = {
   data: Booking[]
@@ -22,6 +75,9 @@ type BookingTableProps = {
   pageSize?: number
   onPageChange?: (page: number) => void
   onPageSizeChange?: (size: number) => void
+  canUpdateStatus?: boolean
+  onStatusChange?: (id: string, status: string) => void | Promise<void>
+  isUpdating?: boolean
 }
 
 const statusLabel = (s: string) =>
@@ -64,7 +120,7 @@ function fmtDateTime(iso: string) {
   })}`
 }
 
-function money(v: any) {
+function money(v?: number | string | null) {
   const n = Number(v ?? 0)
   return `${n.toLocaleString('uz-UZ')} so'm`
 }
@@ -78,7 +134,7 @@ function KeyValue({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function ObjectView({ data }: { data: Record<string, any> }) {
+function ObjectView({ data }: { data?: Record<string, unknown> | null }) {
   const entries = Object.entries(data || {})
   return (
     <div className='grid gap-2 sm:grid-cols-2'>
@@ -93,7 +149,7 @@ function ObjectView({ data }: { data: Record<string, any> }) {
   )
 }
 
-function ItemsView({ items }: { items: any[] }) {
+function ItemsView({ items }: { items?: BookingItem[] }) {
   if (!items?.length)
     return <div className='text-muted-foreground text-sm'>Items yo‘q</div>
 
@@ -128,7 +184,7 @@ function ItemsView({ items }: { items: any[] }) {
                   <TableCell>
                     <div className='font-medium'>{name}</div>
                     {it.note ? (
-                      <div className='text-muted-foreground whitespace-pre-wrap text-xs'>
+                      <div className='text-muted-foreground text-xs whitespace-pre-wrap'>
                         Izoh: {it.note}
                       </div>
                     ) : null}
@@ -155,7 +211,31 @@ function ItemsView({ items }: { items: any[] }) {
   )
 }
 
-function ExpandRow({ booking }: { booking: Booking }) {
+function ExpandRow({
+  booking,
+  canUpdateStatus,
+  onStatusChange,
+  isUpdating,
+}: {
+  booking: Booking
+  canUpdateStatus?: boolean
+  onStatusChange?: (id: string, status: string) => void | Promise<void>
+  isUpdating?: boolean
+}) {
+  const confirmerSummary = getBookingConfirmerSummary(booking)
+  const confirmerTypeLabel = getBookingConfirmerTypeLabel(booking.confirmedByType)
+  const status = String(booking.status || '').toUpperCase()
+  const canAct = Boolean(canUpdateStatus && onStatusChange)
+  const actions: Array<{ label: string; status: string }> = []
+
+  if (status === 'PENDING') {
+    actions.push({ label: 'Tasdiqlash', status: 'CONFIRMED' })
+    actions.push({ label: 'Bekor qilish', status: 'CANCELLED' })
+  } else if (status === 'CONFIRMED') {
+    actions.push({ label: 'Tasdiqlandi', status: 'COMPLETED' })
+    actions.push({ label: 'Bekor qilish', status: 'CANCELLED' })
+  }
+
   return (
     <div className='bg-muted/20 space-y-4 rounded-md border p-4'>
       <div className='grid gap-3 md:grid-cols-2'>
@@ -198,8 +278,31 @@ function ExpandRow({ booking }: { booking: Booking }) {
         <KeyValue label='serviceId' value={booking.serviceId} />
         <KeyValue label='tableId' value={booking.tableId} />
         <KeyValue label='idempotencyKey' value={booking.idempotencyKey} />
+        <KeyValue label='tasdiqlagan' value={confirmerSummary ?? '-'} />
+        <KeyValue label='tasdiqlovchi turi' value={confirmerTypeLabel ?? '-'} />
+        <KeyValue
+          label='tasdiqlangan vaqti'
+          value={booking.confirmedAt ? fmtDateTime(booking.confirmedAt) : '-'}
+        />
         <KeyValue label='notes' value={booking.notes ?? '-'} />
       </div>
+
+      {canAct && actions.length > 0 ? (
+        <div className='flex flex-wrap gap-2'>
+          {actions.map((action) => (
+            <Button
+              key={action.status}
+              type='button'
+              variant='outline'
+              size='sm'
+              disabled={isUpdating}
+              onClick={() => onStatusChange?.(booking.id, action.status)}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -211,9 +314,11 @@ export function BookingTable({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  canUpdateStatus,
+  onStatusChange,
+  isUpdating,
 }: BookingTableProps) {
   const [openMap, setOpenMap] = React.useState<Record<string, boolean>>({})
-  console.log('data', data)
 
   const toggle = (id: string) => setOpenMap((p) => ({ ...p, [id]: !p[id] }))
   const currentPage = page ?? 1
@@ -242,6 +347,7 @@ export function BookingTable({
             <TableBody className='min-w-[1000px]'>
               {data?.map((booking) => {
                 const isOpen = !!openMap[booking.id]
+                const confirmerSummary = getBookingConfirmerSummary(booking)
 
                 return (
                   <React.Fragment key={booking.id}>
@@ -309,7 +415,14 @@ export function BookingTable({
                       </TableCell>
 
                       <TableCell className='py-2'>
-                        <StatusBadge status={booking.status} />
+                        <div className='space-y-1'>
+                          <StatusBadge status={booking.status} />
+                          {confirmerSummary ? (
+                            <div className='text-muted-foreground text-xs'>
+                              {confirmerSummary}
+                            </div>
+                          ) : null}
+                        </div>
                       </TableCell>
 
                       <TableCell className='py-2 text-right'>
@@ -326,7 +439,12 @@ export function BookingTable({
                     {isOpen ? (
                       <TableRow>
                         <TableCell colSpan={7} className='pt-0'>
-                          <ExpandRow booking={booking} />
+                          <ExpandRow
+                            booking={booking}
+                            canUpdateStatus={canUpdateStatus}
+                            onStatusChange={onStatusChange}
+                            isUpdating={isUpdating}
+                          />
                         </TableCell>
                       </TableRow>
                     ) : null}

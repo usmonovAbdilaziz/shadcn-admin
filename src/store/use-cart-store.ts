@@ -13,6 +13,15 @@ export interface CartOptions {
   liter?: string
 }
 
+export interface CartServiceSummary {
+  id: string
+  price: number | string
+  name?: string | null
+  description?: string | null
+  photoUrl?: string | null
+  [key: string]: unknown
+}
+
 export interface CartItem {
   id: string
   serviceId: string
@@ -20,12 +29,12 @@ export interface CartItem {
   options: CartOptions
   priceSnapshot: number
   description?: string
-  service: any // Keep full service object for UI convenience
+  service: CartServiceSummary // Keep full service object for UI convenience
 }
 
 interface CartState {
   items: CartItem[]
-  addToCart: (service: any, options: CartOptions) => void
+  addToCart: (service: CartServiceSummary, options: CartOptions) => void
   removeFromCart: (itemId: string) => void
   updateQty: (itemId: string, delta: number) => void
   setItemDescription: (itemId: string, description: string) => void
@@ -35,25 +44,25 @@ interface CartState {
   totalItems: number
 }
 
-export const makeCartKey = (serviceId: string, options: CartOptions) => {
-  // Stable stringification of options
-  const sortedOptions = Object.keys(options)
-    .sort()
-    .reduce((acc: any, key) => {
-      acc[key] = (options as any)[key]
-      if (typeof acc[key] === 'object' && acc[key] !== null) {
-        // Sort sub-options (like teaOptions)
-        acc[key] = Object.keys(acc[key])
-          .sort()
-          .reduce((subAcc: any, subKey) => {
-            subAcc[subKey] = (acc[key] as any)[subKey]
-            return subAcc
-          }, {})
-      }
-      return acc
-    }, {})
+const normalizeCartOptions = (options: CartOptions): CartOptions => {
+  const normalizedOptions: CartOptions = {}
 
-  return `${serviceId}-${JSON.stringify(sortedOptions)}`
+  if (options.liter) {
+    normalizedOptions.liter = options.liter
+  }
+
+  if (options.teaOptions) {
+    normalizedOptions.teaOptions = {
+      lemon: options.teaOptions.lemon,
+      teaColor: options.teaOptions.teaColor,
+    }
+  }
+
+  return normalizedOptions
+}
+
+export const makeCartKey = (serviceId: string, options: CartOptions) => {
+  return `${serviceId}-${JSON.stringify(normalizeCartOptions(options))}`
 }
 
 export const useCartStore = create<CartState>()(
@@ -113,8 +122,8 @@ export const useCartStore = create<CartState>()(
       },
 
       updateQty: (itemId, delta) => {
-        const newItems = get().items
-          .map((item) => {
+        const newItems = get()
+          .items.map((item) => {
             if (item.id === itemId) {
               const newQty = Math.max(0, item.qty + delta)
               return { ...item, qty: newQty }

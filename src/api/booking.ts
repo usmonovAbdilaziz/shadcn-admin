@@ -11,12 +11,12 @@ export const createBooking = async (booking: {
   }>
   note?: string
   idempotencyKey?: string
-}) => {
-  const token = localStorage.getItem('token')
+}, token?: string | null) => {
+  const authToken = token ?? localStorage.getItem('token')
 
   const response = await axios.post(`${baseApiv1}/booking/client`, booking, {
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...(booking.idempotencyKey
         ? { 'Idempotency-Key': booking.idempotencyKey }
         : {}),
@@ -28,12 +28,13 @@ export const createBooking = async (booking: {
 
 export const getClientBookings = async (
   clientId: string,
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | undefined>,
+  token?: string | null
 ) => {
-  const token = localStorage.getItem('token')
+  const authToken = token ?? localStorage.getItem('token')
   const response = await axios.get(`${baseApiv1}/booking/client/${clientId}`, {
     params,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
   })
   return response.data
 }

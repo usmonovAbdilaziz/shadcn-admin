@@ -1,36 +1,79 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { socket } from '@/lib/socket-client';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  type ReactNode,
+} from 'react'
+import { useClientStore } from '@/store/use-client-store'
+import { socket } from '@/lib/socket-client'
 
 interface SocketContextType {
-  socket: typeof socket;
+  socket: typeof socket
 }
 
-const SocketContext = createContext<SocketContextType | undefined>(undefined);
+const SocketContext = createContext<SocketContextType | undefined>(undefined)
 
 export const useSocket = () => {
-  const context = useContext(SocketContext);
+  const context = useContext(SocketContext)
   if (!context) {
-    throw new Error('useSocket must be used within a SocketProvider');
+    throw new Error('useSocket must be used within a SocketProvider')
   }
-  return context.socket;
-};
+  return context.socket
+}
 
-export const SocketProvider: React.FC<{ children: ReactNode; tableId?: string }> = ({ children, tableId }) => {
+export const SocketProvider: React.FC<{
+  children: ReactNode
+  tableId?: string
+}> = ({ children, tableId }) => {
+  const storedTableId = useClientStore((state) => state.tableId)
+  const clientId = useClientStore((state) => state.clientId)
+  const activeTableId = tableId ?? storedTableId
+
   useEffect(() => {
-    socket.connect();
+    socket.connect()
 
-    if (tableId) {
-      socket.emit('joinRoom', tableId);
+    return () => {
+      socket.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    const joinActiveTableRoom = () => {
+      if (!activeTableId) return
+      socket.emit('joinRoom', { tableId: activeTableId })
+    }
+
+    socket.on('connect', joinActiveTableRoom)
+
+    if (socket.connected) {
+      joinActiveTableRoom()
     }
 
     return () => {
-      socket.disconnect();
-    };
-  }, [tableId]);
+      socket.off('connect', joinActiveTableRoom)
+    }
+  }, [activeTableId])
+
+  useEffect(() => {
+    const joinClientRoom = () => {
+      if (!clientId) return
+      socket.emit('joinClientRoom', { clientId })
+    }
+
+    socket.on('connect', joinClientRoom)
+
+    if (socket.connected) {
+      joinClientRoom()
+    }
+
+    return () => {
+      socket.off('connect', joinClientRoom)
+    }
+  }, [clientId])
 
   return (
     <SocketContext.Provider value={{ socket }}>
       {children}
     </SocketContext.Provider>
-  );
-};
+  )
+}

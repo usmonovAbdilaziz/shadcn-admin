@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 import axios from 'axios'
 import { baseApi } from '@/api/baseApi'
+import { getStaffRouteTarget } from '@/lib/staff-position'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async ({ location }) => {
@@ -23,15 +24,17 @@ export const Route = createFileRoute('/admin')({
       const role = me?.role as string | undefined
 
       if (role !== 'ADMIN') {
+        if (role === 'STAFF') {
+          throw redirect(getStaffRouteTarget(me?.position))
+        }
+
         throw redirect({
           to:
             role === 'BUSINESS'
               ? '/business'
-              : role === 'STAFF'
-                ? '/staff'
-                : role === 'CLIENT'
-                  ? '/client'
-                  : '/sign-in',
+              : role === 'CLIENT'
+                ? '/client'
+                : '/sign-in',
         })
       }
     } catch (error) {

@@ -37,6 +37,17 @@ export const Route = createFileRoute('/staff')({
                   : '/sign-in',
         })
       }
+
+      const storedUser = getStoredUser()
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          ...storedUser,
+          ...me,
+          userType: 'STAFF',
+          position: me?.position ?? storedUser.position ?? null,
+        })
+      )
     } catch (error) {
       if (!axios.isAxiosError(error)) throw error
 
@@ -55,3 +66,11 @@ export const Route = createFileRoute('/staff')({
   },
   component: AuthenticatedLayout,
 })
+
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    return {}
+  }
+}

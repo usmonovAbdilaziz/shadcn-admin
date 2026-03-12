@@ -1,15 +1,12 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, Clock, Package, Phone, User } from 'lucide-react'
+import { useGetClientMe } from '@/hooks/client'
+import { useGetClientBookings } from '@/hooks/booking'
+import { useBookingRealtimeInvalidation } from '@/hooks/booking-realtime'
+import { getBookingStatusLabel, getBookingStatusTone } from '@/lib/booking-status'
+import { cn } from '@/lib/utils'
 import { useClientStore } from '@/store/use-client-store'
-import {
-  ArrowLeft,
-  Package,
-  Clock,
-  Phone,
-  User,
-} from 'lucide-react'
-import { toast } from 'sonner'
 import {
   Accordion,
   AccordionContent,
@@ -20,41 +17,47 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 
+type ProfileBookingItem = {
+  id: string
+  productId: string
+  qty: number
+  priceSnapshot: number
+  note?: string | null
+  product?: {
+    name?: string | null
+  } | null
+}
+
+type ProfileBooking = {
+  id: string
+  createdAt: string
+  price?: number | string | null
+  status: string
+  table?: {
+    tableNumber?: number | null
+  } | null
+  items?: ProfileBookingItem[]
+}
+
 export const ClientProfile = () => {
-  const { token, phone, logout } = useClientStore()
-  const [orders, setOrders] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { token, phone, logout, clientId, setClientId } = useClientStore()
   const navigate = useNavigate()
+  const meQuery = useGetClientMe(token || '')
+
+  const resolvedClientId =
+    clientId || meQuery.data?.data?.id || meQuery.data?.id || ''
+
+  const bookingsQuery = useGetClientBookings(resolvedClientId, token)
+  useBookingRealtimeInvalidation(
+    [['client-bookings', resolvedClientId]],
+    Boolean(resolvedClientId)
+  )
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!token) return
-      try {
-        const meResponse = await axios.get('http://localhost:3002/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const clientId = meResponse.data?.data?.id
-        if (!clientId) {
-          throw new Error('Client ID not found')
-        }
-        const response = await axios.get(
-          `http://localhost:3002/api/v1/booking/client/${clientId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        )
-
-        setOrders(response.data.data?.items || [])
-        toast.success('Buyurtmalar yuklandi')
-      } catch (error) {
-        toast.error('Buyurtmalarni yuklashda xatolik')
-      } finally {
-        setIsLoading(false)
-      }
+    if (resolvedClientId && resolvedClientId !== clientId) {
+      setClientId(resolvedClientId)
     }
-
-    fetchOrders()
-  }, [token])
+  }, [clientId, resolvedClientId, setClientId])
 
   if (!token) {
     return (
@@ -67,7 +70,7 @@ export const ClientProfile = () => {
           </p>
           <Button
             className='mt-6 w-full'
-            onClick={() => navigate({ to: '/client' as any })}
+            onClick={() => navigate({ to: '/client' })}
           >
             Menyuga qaytish
           </Button>
@@ -76,6 +79,16 @@ export const ClientProfile = () => {
     )
   }
 
+  const orders = (bookingsQuery.data?.data?.items || []) as ProfileBooking[]
+  const isLoading =
+    meQuery.isLoading || (Boolean(resolvedClientId) && bookingsQuery.isLoading)
+  const hasError = meQuery.isError || bookingsQuery.isError
+  const displayPhone =
+    phone ||
+    meQuery.data?.data?.phone ||
+    meQuery.data?.data?.phoneNumber ||
+    '-'
+
   return (
     <div className='mt-20 flex flex-col items-center px-4 pb-20'>
       <div className='w-full max-w-2xl'>
@@ -83,7 +96,7 @@ export const ClientProfile = () => {
           <Button
             variant='ghost'
             size='sm'
-            onClick={() => navigate({ to: '/client' as any })}
+            onClick={() => navigate({ to: '/client' })}
             className='gap-2'
           >
             <ArrowLeft className='h-4 w-4' /> Ortga
@@ -93,11 +106,10 @@ export const ClientProfile = () => {
             size='sm'
             onClick={() => {
               logout()
-              navigate({ to: '/client' as any })
+              navigate({ to: '/client' })
             }}
             className='text-destructive'
           >
-            {' '}
             Chiqish
           </Button>
         </div>
@@ -110,7 +122,7 @@ export const ClientProfile = () => {
             <div>
               <h1 className='text-xl font-bold'>Mijoz Profili</h1>
               <div className='text-muted-foreground mt-1 flex items-center gap-2 text-sm'>
-                <Phone className='h-3 w-3' /> {phone}
+                <Phone className='h-3 w-3' /> {displayPhone}
               </div>
             </div>
           </div>
@@ -122,13 +134,17 @@ export const ClientProfile = () => {
 
         {isLoading ? (
           <div className='space-y-4'>
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map((item) => (
               <div
-                key={i}
+                key={item}
                 className='bg-muted h-32 w-full animate-pulse rounded-xl'
               />
             ))}
           </div>
+        ) : hasError ? (
+          <Card className='p-8 text-center text-destructive'>
+            Buyurtmalarni yuklashda xatolik
+          </Card>
         ) : orders.length === 0 ? (
           <Card className='text-muted-foreground p-8 text-center'>
             Hali buyurtmalar mavjud emas
@@ -140,21 +156,11 @@ export const ClientProfile = () => {
                 Number(
                   order.price ??
                     (order.items || []).reduce(
-                      (sum: number, item: any) =>
+                      (sum: number, item: ProfileBookingItem) =>
                         sum + item.priceSnapshot * item.qty,
                       0
                     )
                 ) || 0
-
-              const statusLabel =
-                order.status === 'CONFIRMED'
-                  ? 'Tasdiqlangan'
-                  : order.status === 'PENDING'
-                    ? 'Kutilmoqda'
-                    : order.status
-
-              const badgeVariant =
-                order.status === 'CONFIRMED' ? 'default' : 'secondary'
 
               return (
                 <AccordionItem
@@ -163,7 +169,6 @@ export const ClientProfile = () => {
                   className='border-0'
                 >
                   <Card className='p-0 transition-shadow hover:shadow-md'>
-                    {/* HEADER (always visible) */}
                     <AccordionTrigger className='px-4 py-4 hover:no-underline'>
                       <div className='flex w-full items-start justify-between gap-4'>
                         <div className='text-left'>
@@ -180,21 +185,20 @@ export const ClientProfile = () => {
                           </p>
 
                           <div className='text-muted-foreground mt-2 flex items-center gap-2 text-xs'>
-                            <Clock className='h-3 w-3' /> Stol #{' '}
+                            <Clock className='h-3 w-3' /> Stol #
                             {order.table?.tableNumber}
                           </div>
                         </div>
 
                         <div className='flex shrink-0 flex-col items-end gap-2'>
                           <Badge
-                            variant={badgeVariant}
-                            className={
-                              order.status === 'CONFIRMED'
-                                ? 'bg-emerald-500 hover:bg-emerald-600'
-                                : ''
-                            }
+                            variant='outline'
+                            className={cn(
+                              'border',
+                              getBookingStatusTone(order.status)
+                            )}
                           >
-                            {statusLabel}
+                            {getBookingStatusLabel(order.status)}
                           </Badge>
 
                           <div className='text-lg font-bold'>{total} so'm</div>
@@ -202,10 +206,9 @@ export const ClientProfile = () => {
                       </div>
                     </AccordionTrigger>
 
-                    {/* DROPDOWN CONTENT */}
                     <AccordionContent className='px-4 pb-4'>
                       <div className='mt-2 space-y-1 border-t pt-3'>
-                        {order.items?.map((item: any) => (
+                        {order.items?.map((item: ProfileBookingItem) => (
                           <div
                             key={item.id}
                             className='flex items-start justify-between gap-3 text-sm'
@@ -224,12 +227,6 @@ export const ClientProfile = () => {
                           </div>
                         ))}
                       </div>
-
-                      {/* xohlasangiz pastda actionlar ham qo‘shasiz */}
-                      {/* <div className="mt-4 flex justify-end gap-2">
-                  <Button size="sm" variant="secondary">Bekor qilish</Button>
-                  <Button size="sm">Tasdiqlash</Button>
-                </div> */}
                     </AccordionContent>
                   </Card>
                 </AccordionItem>

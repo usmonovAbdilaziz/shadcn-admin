@@ -1,19 +1,21 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useCartStore } from '@/store/use-cart-store';
-import { useClientStore } from '@/store/use-client-store';
-import { ShoppingBag } from 'lucide-react';
-import { useGetClientMe, useGetClientServices } from '@/hooks/client';
-import { Button } from '../ui/button';
-import { Karzinka } from './Karzinka';
-import { Drinks } from './drinks';
-import { HotMeals } from './hot-meals';
-import { Salads } from './salads';
-import { Sweets } from './sweeds';
-
+import { type ComponentType, useCallback, useEffect, useState } from 'react'
+import { useCartStore } from '@/store/use-cart-store'
+import { useClientStore } from '@/store/use-client-store'
+import { ShoppingBag } from 'lucide-react'
+import { useGetClientMe, useGetClientServices } from '@/hooks/client'
+import { Button } from '../ui/button'
+import { Karzinka } from './Karzinka'
+import { Drinks } from './drinks'
+import { HotMeals } from './hot-meals'
+import { Salads } from './salads'
+import { Sweets } from './sweeds'
 
 type Category = 'FOODS' | 'DRINKS' | 'SWEETS' | 'SALADS'
 
-const CATEGORY_COMPONENTS: Record<Category, React.ComponentType<any>> = {
+const CATEGORY_COMPONENTS: Record<
+  Category,
+  ComponentType<{ services: unknown }>
+> = {
   FOODS: HotMeals,
   DRINKS: Drinks,
   SWEETS: Sweets,
@@ -32,7 +34,9 @@ const loadCategoryIndex = (): number => {
       const idx = parseInt(saved, 10)
       if (idx >= 0 && idx < CATEGORIES.length) return idx
     }
-  } catch {}
+  } catch {
+    return 0
+  }
   return 0
 }
 
@@ -42,7 +46,6 @@ export const ClientBody = () => {
   const [count, setCount] = useState(loadCategoryIndex)
   const { items: cartItems, clearCart, totalItems, syncTotals } = useCartStore()
   const { data: client } = useGetClientMe(token!)
-  console.log('businessId', businessId)
 
   useEffect(() => {
     const clientId = client?.data?.id || client?.id
@@ -104,23 +107,13 @@ export const ClientBody = () => {
   }
 
   if (showKarzinka) {
-    return (
-      <Karzinka
-        onBack={handleBackFromKarzinka}
-        onOrder={handleOrder}
-      />
-    )
+    return <Karzinka onBack={handleBackFromKarzinka} onOrder={handleOrder} />
   }
 
   return (
     <div className='mt-20 flex w-full flex-col items-center pb-20'>
       <div className='flex w-full max-w-[1280px] flex-wrap justify-center gap-6 px-4'>
-       
-        {ActiveComponent && (
-          <ActiveComponent
-            services={services}
-          />
-        )}
+        {ActiveComponent && <ActiveComponent services={services} />}
       </div>
 
       {cartItems.length > 0 && (

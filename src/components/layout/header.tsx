@@ -1,4 +1,6 @@
+import { useLocation } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { getStaffPositionLabel } from '@/lib/staff-position'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -10,6 +12,10 @@ type HeaderProps = React.HTMLAttributes<HTMLElement> & {
 
 export function Header({ className, fixed, children, ...props }: HeaderProps) {
   const [offset, setOffset] = useState(0)
+  const [staffPositionLabel, setStaffPositionLabel] = useState<string | null>(
+    null
+  )
+  const href = useLocation({ select: (location) => location.href })
 
   useEffect(() => {
     const onScroll = () => {
@@ -22,6 +28,10 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
     // Clean up the event listener on unmount
     return () => document.removeEventListener('scroll', onScroll)
   }, [])
+
+  useEffect(() => {
+    setStaffPositionLabel(getStoredStaffPositionLabel())
+  }, [href])
 
   return (
     <header
@@ -42,9 +52,30 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
         )}
       >
         <SidebarTrigger variant='outline' className='max-md:scale-125' />
+        {staffPositionLabel ? (
+          <div className='hidden min-w-0 sm:flex sm:items-center'>
+            <span className='rounded-md border border-border/60 bg-muted/30 px-3 py-1 text-sm font-medium text-foreground/90'>
+              {staffPositionLabel}
+            </span>
+          </div>
+        ) : null}
         <Separator orientation='vertical' className='h-6' />
         {children}
       </div>
     </header>
   )
+}
+
+const getStoredStaffPositionLabel = () => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+
+    if (storedUser?.userType !== 'STAFF') {
+      return null
+    }
+
+    return getStaffPositionLabel(storedUser.position)
+  } catch {
+    return null
+  }
 }

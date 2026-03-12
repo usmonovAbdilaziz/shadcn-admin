@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { type CartItem, useCartStore } from '@/store/use-cart-store'
 import { useClientStore } from '@/store/use-client-store'
@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   PencilLine,
 } from 'lucide-react'
+import { getOrderSessionStatus } from '@/api/order'
 import { useSocket } from '@/context/socket-context'
 import { useCreateBooking } from '@/hooks/booking'
 import { Badge } from '../ui/badge'
@@ -28,7 +29,94 @@ interface KarzinkaProps {
   onOrder: () => void
 }
 
+type AuthUser = {
+  id: string
+  role: 'CLIENT' | 'BUSINESS' | 'ADMIN' | 'STAFF'
+  businessId?: string | null
+  staffId?: string | null
+  fullName?: string | null
+  phone?: string | null
+}
+
+type ConfirmedPendingOrder = {
+  id: string
+  status: 'CONFIRMED'
+}
+
+type AwaitingTelegramPendingOrder = {
+  id: string
+  status: 'AWAITING_TELEGRAM'
+  telegramAppUrl?: string
+  telegramUrl?: string
+}
+
+type PendingOrderState =
+  | ConfirmedPendingOrder
+  | AwaitingTelegramPendingOrder
+  | null
+
+type CreateBookingResult = {
+  data: {
+    id: string
+  }
+}
+
+type TelegramSessionData = {
+  orderSessionId: string
+  telegramAppLink?: string
+  telegramLink?: string
+}
+
+type CreateBookingError = {
+  response?: {
+    status?: number
+    data?: {
+      data?: TelegramSessionData
+    }
+  }
+}
+
+type SocketAuthTokenPayload = {
+  tableId?: string
+  orderSessionId?: string
+  orderId?: string
+  token: string
+  tokenExpiresAt?: string
+  user: AuthUser
+}
+
+type VerifiedOrderSessionStatus = SocketAuthTokenPayload & {
+  status: 'VERIFIED'
+  expiresAt: string
+  verifiedAt?: string
+}
+
+type PendingOrderSessionStatus = {
+  orderSessionId: string
+  tableId: string
+  status: 'AWAITING_TELEGRAM' | 'EXPIRED'
+  expiresAt: string
+  verifiedAt?: string
+}
+
+type OrderSessionStatusResult = {
+  data: VerifiedOrderSessionStatus | PendingOrderSessionStatus
+}
+
 const MAX_ITEM_DESCRIPTION_LENGTH = 250
+
+const loadPendingOrder = (): PendingOrderState => {
+  const savedPendingOrder = localStorage.getItem('pendingOrder')
+  if (!savedPendingOrder) {
+    return null
+  }
+
+  try {
+    return JSON.parse(savedPendingOrder) as PendingOrderState
+  } catch {
+    return null
+  }
+}
 
 const formatItemOptions = (item: CartItem) => {
   const labels: string[] = []
@@ -73,11 +161,11 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     totalPrice,
     totalItems,
   } = useCartStore()
-  const { setAuth, tableId, orderSessionId, setOrderSessionId } =
+  const { token, setAuth, tableId, orderSessionId, setOrderSessionId } =
     useClientStore()
   const navigate = useNavigate()
-  const { mutateAsync: createBooking } = useCreateBooking()
-  const socket = useSocket() as any
+  const { mutateAsync: createBooking } = useCreateBooking(token)
+  const socket = useSocket()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [descriptionOpenMap, setDescriptionOpenMap] = useState<
@@ -86,13 +174,12 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
   const [showConfirmModal, setShowConfirmModal] = useState(() => {
     return localStorage.getItem('showConfirmModal') === 'true'
   })
-  const [pendingOrder, setPendingOrder] = useState<any>(() => {
-    const saved = localStorage.getItem('pendingOrder')
-    return saved ? JSON.parse(saved) : null
-  })
+  const [pendingOrder, setPendingOrder] =
+    useState<PendingOrderState>(loadPendingOrder)
 
   const processedOrderIdRef = useRef<string | null>(null)
   const pendingBookingKeyRef = useRef<string | null>(null)
+  const handledAuthSessionRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (pendingOrder) {
@@ -104,23 +191,26 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     localStorage.setItem('showConfirmModal', String(showConfirmModal))
   }, [pendingOrder, showConfirmModal])
 
-  const handleConfirmAction = (bookingData: any) => {
-    const bookingId = bookingData.id
-    if (processedOrderIdRef.current === bookingId) return
-    processedOrderIdRef.current = bookingId
+  const handleConfirmAction = useCallback(
+    (bookingData: ConfirmedPendingOrder) => {
+      const bookingId = bookingData.id
+      if (processedOrderIdRef.current === bookingId) return
+      processedOrderIdRef.current = bookingId
 
-    setPendingOrder((prev: any) => {
-      if (prev?.status === 'CONFIRMED') return prev
-      return { ...prev, ...bookingData, status: 'CONFIRMED' }
-    })
+      setPendingOrder((prev) => {
+        if (prev?.status === 'CONFIRMED') return prev
+        return { ...prev, ...bookingData, status: 'CONFIRMED' }
+      })
 
-    onOrder()
+      onOrder()
 
-    setTimeout(() => {
-      setShowConfirmModal(false)
-      navigate({ to: '/client/profile' as any })
-    }, 2000)
-  }
+      setTimeout(() => {
+        setShowConfirmModal(false)
+        navigate({ to: '/client/profile' })
+      }, 2000)
+    },
+    [navigate, onOrder]
+  )
 
   const toggleDescription = (itemId: string) => {
     setDescriptionOpenMap((prev) => ({
@@ -133,69 +223,94 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     setItemDescription(itemId, value.slice(0, MAX_ITEM_DESCRIPTION_LENGTH))
   }
 
-  const submitAuthorizedBooking = async (idempotencyKey: string) => {
-    try {
-      const result = await createBooking({
-        tableId: tableId!,
-        idempotencyKey,
-        items: cartItems.map((item: CartItem) => ({
-          productId: item.serviceId,
-          qty: item.qty,
-          priceSnapshot: item.priceSnapshot,
-          note: buildBookingItemNote(item),
-        })),
-      })
+  const openTelegramLink = useCallback(
+    (telegramAppLink?: string, telegramLink?: string) => {
+      const targetLink = telegramAppLink || telegramLink
+      if (!targetLink) return
+      window.open(targetLink, '_blank')
+    },
+    []
+  )
 
-      const bookingData = result.data
-      const confirmedOrder = {
-        id: bookingData.id,
-        status: 'CONFIRMED',
-      }
-      setPendingOrder(confirmedOrder)
-      setShowConfirmModal(true)
-      handleConfirmAction(confirmedOrder)
-    } catch (error: any) {
-      if (
-        error.response?.status === 403 &&
-        error.response.data?.data?.telegramLink
-      ) {
-        const sessionData = error.response.data.data
-        setOrderSessionId(sessionData.orderSessionId)
-        const newPendingOrder = {
-          id: sessionData.orderSessionId,
-          telegramAppUrl: sessionData.telegramAppLink,
-          telegramUrl: sessionData.telegramLink,
-          status: 'AWAITING_TELEGRAM',
+  const submitAuthorizedBooking = useCallback(
+    async (idempotencyKey: string) => {
+      try {
+        const result = (await createBooking({
+          tableId: tableId!,
+          idempotencyKey,
+          items: cartItems.map((item: CartItem) => ({
+            productId: item.serviceId,
+            qty: item.qty,
+            priceSnapshot: item.priceSnapshot,
+            note: buildBookingItemNote(item),
+          })),
+        })) as CreateBookingResult
+
+        const bookingData = result.data
+        const confirmedOrder: ConfirmedPendingOrder = {
+          id: bookingData.id,
+          status: 'CONFIRMED',
         }
-        setPendingOrder(newPendingOrder)
+        setPendingOrder(confirmedOrder)
         setShowConfirmModal(true)
+        handleConfirmAction(confirmedOrder)
+      } catch (error) {
+        const bookingError = error as CreateBookingError
 
-        openTelegramLink(sessionData.telegramAppLink, sessionData.telegramLink)
-      } else {
-        throw error
+        if (
+          bookingError.response?.status === 403 &&
+          bookingError.response.data?.data?.telegramLink
+        ) {
+          const sessionData = bookingError.response.data.data
+          if (!sessionData) {
+            throw error
+          }
+
+          handledAuthSessionRef.current = null
+          setOrderSessionId(sessionData.orderSessionId)
+          const newPendingOrder: AwaitingTelegramPendingOrder = {
+            id: sessionData.orderSessionId,
+            telegramAppUrl: sessionData.telegramAppLink,
+            telegramUrl: sessionData.telegramLink,
+            status: 'AWAITING_TELEGRAM',
+          }
+          setPendingOrder(newPendingOrder)
+          setShowConfirmModal(true)
+
+          openTelegramLink(
+            sessionData.telegramAppLink,
+            sessionData.telegramLink
+          )
+        } else {
+          throw error
+        }
       }
-    }
-  }
+    },
+    [
+      cartItems,
+      createBooking,
+      handleConfirmAction,
+      openTelegramLink,
+      setOrderSessionId,
+      tableId,
+    ]
+  )
 
-  const openTelegramLink = (
-    telegramAppLink?: string,
-    telegramLink?: string
-  ) => {
-    const targetLink = telegramAppLink || telegramLink
-    if (!targetLink) return
-    window.open(targetLink, '_blank')
-  }
-
-  useEffect(() => {
-    const handleAuthToken = async (data: any) => {
-      if (!data || data.tableId !== tableId) return
+  const finalizeTelegramAuth = useCallback(
+    async (data: SocketAuthTokenPayload) => {
+      if (!data?.tableId || !data?.orderSessionId) return
+      if (data.tableId !== tableId) return
       if (orderSessionId && data.orderSessionId !== orderSessionId) return
+      if (handledAuthSessionRef.current === data.orderSessionId) return
+
+      handledAuthSessionRef.current = data.orderSessionId
+
       let tokenToUse = data.token
 
-      // If server included expiry and token is already expired, try to fetch a fresh token
       if (
         data.tokenExpiresAt &&
-        Date.parse(data.tokenExpiresAt) <= Date.now()
+        Date.parse(data.tokenExpiresAt) <= Date.now() &&
+        data.orderId
       ) {
         try {
           const resp = await fetch(`/api/telegram/order/${data.orderId}/token`)
@@ -203,8 +318,8 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
             const body = await resp.json()
             tokenToUse = body.data?.token || tokenToUse
           }
-        } catch (err) {
-          console.error('Failed to refresh token from server:', err)
+        } catch {
+          // Keep the current token if refresh fails.
         }
       }
 
@@ -221,8 +336,61 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
           pendingBookingKeyRef.current ?? crypto.randomUUID()
         pendingBookingKeyRef.current = idempotencyKey
         await submitAuthorizedBooking(idempotencyKey)
-      } catch (error) {
-        console.error('Booking creation after Telegram auth failed:', error)
+      } catch {
+        handledAuthSessionRef.current = null
+        alert(
+          "Tasdiqlangandan keyin booking yaratib bo'lmadi. Qayta urinib ko'ring."
+        )
+      }
+    },
+    [
+      orderSessionId,
+      setAuth,
+      setOrderSessionId,
+      submitAuthorizedBooking,
+      tableId,
+    ]
+  )
+
+  useEffect(() => {
+    const handleAuthToken = async (data: SocketAuthTokenPayload) => {
+      await finalizeTelegramAuth(data)
+      return
+
+      if (!data || data.tableId !== tableId) return
+      if (orderSessionId && data.orderSessionId !== orderSessionId) return
+      let tokenToUse = data.token
+
+      // If server included expiry and token is already expired, try to fetch a fresh token
+      if (
+        data.tokenExpiresAt &&
+        Date.parse(data.tokenExpiresAt||"") <= Date.now()
+      ) {
+        try {
+          const resp = await fetch(`/api/telegram/order/${data.orderId}/token`)
+          if (resp.ok) {
+            const body = await resp.json()
+            tokenToUse = body.data?.token || tokenToUse
+          }
+        } catch {
+          // Keep the current token if refresh fails.
+        }
+      }
+
+      setAuth({
+        token: tokenToUse,
+        user: data.user,
+      })
+      localStorage.removeItem('token')
+      localStorage.setItem('token', tokenToUse)
+      setOrderSessionId(null)
+
+      try {
+        const idempotencyKey =
+          pendingBookingKeyRef.current ?? crypto.randomUUID()
+        pendingBookingKeyRef.current = idempotencyKey
+        await submitAuthorizedBooking(idempotencyKey)
+      } catch {
         alert(
           'Tasdiqlangandan keyin booking yaratib bo‘lmadi. Qayta urinib ko‘ring.'
         )
@@ -236,14 +404,72 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
       socket.off('auth:token', handleAuthToken)
     }
   }, [
+    finalizeTelegramAuth,
     socket,
-    tableId,
     orderSessionId,
-    cartItems,
-    createBooking,
     setAuth,
     setOrderSessionId,
+    submitAuthorizedBooking,
+    tableId,
   ])
+
+  useEffect(() => {
+    if (pendingOrder?.status !== 'AWAITING_TELEGRAM' || !tableId) {
+      return
+    }
+
+    let isActive = true
+    const sessionId = pendingOrder.id
+
+    const pollOrderSessionStatus = async () => {
+      try {
+        const result = (await getOrderSessionStatus(
+          sessionId,
+          tableId
+        )) as OrderSessionStatusResult
+
+        if (!isActive) return
+
+        if (result.data.status === 'VERIFIED') {
+          await finalizeTelegramAuth(result.data)
+          return
+        }
+
+        if (result.data.status === 'EXPIRED') {
+          handledAuthSessionRef.current = null
+          setPendingOrder(null)
+          setShowConfirmModal(false)
+          setOrderSessionId(null)
+          alert(
+            "Telegram tasdiqlash sessiyasi tugadi. Qaytadan urinib ko'ring."
+          )
+        }
+      } catch {
+        // Keep waiting; socket event or the next poll may still complete the flow.
+      }
+    }
+
+    void pollOrderSessionStatus()
+    const intervalId = window.setInterval(() => {
+      void pollOrderSessionStatus()
+    }, 3000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void pollOrderSessionStatus()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibilityChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      isActive = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibilityChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [finalizeTelegramAuth, pendingOrder, setOrderSessionId, tableId])
 
   const handleSubmit = async () => {
     if (isSubmitting || !tableId) return
@@ -254,8 +480,7 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
       pendingBookingKeyRef.current = idempotencyKey
 
       await submitAuthorizedBooking(idempotencyKey)
-    } catch (error) {
-      console.error('Buyurtma yuborishda xatolik:', error)
+    } catch {
       alert("Buyurtma yuborishda xatolik yuz berdi. Qayta urinib ko'ring.")
     } finally {
       setIsSubmitting(false)
@@ -318,8 +543,8 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
                 <div className='flex gap-4 p-4'>
                   <div className='h-20 w-20 shrink-0 overflow-hidden rounded-xl'>
                     <img
-                      src={item.service.photoUrl}
-                      alt={item.service.name}
+                      src={item.service.photoUrl!}
+                      alt={item.service.name!}
                       className='h-full w-full object-cover'
                     />
                   </div>
@@ -444,7 +669,6 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
                             }
                           />
                           <div className='text-muted-foreground mt-2 flex items-center justify-between text-xs'>
-                            <span>Bo'sh qoldirilsa `null` bo'lib yuboriladi.</span>
                             <span>
                               {(item.description ?? '').length}/
                               {MAX_ITEM_DESCRIPTION_LENGTH}
@@ -497,7 +721,7 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
                 className='w-full'
                 onClick={() => {
                   setShowConfirmModal(false)
-                  navigate({ to: '/client/profile' as any })
+                  navigate({ to: '/client/profile' })
                 }}
               >
                 Profilni ko'rish
