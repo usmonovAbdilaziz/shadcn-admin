@@ -13,9 +13,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
+  getBookingItemProgressLabel,
+  getBookingItemProgressTone,
+  getBookingProgressLabel,
+  getBookingProgressTone,
+  getResponsibleRoleLabel,
+} from '@/lib/booking-progress'
+import {
   getBookingConfirmerSummary,
   getBookingConfirmerTypeLabel,
 } from '@/lib/booking-confirmer'
+import { cn } from '@/lib/utils'
 
 type BookingItem = {
   id?: string
@@ -25,6 +33,8 @@ type BookingItem = {
   priceSnapshot?: number
   price?: number
   note?: string | null
+  status?: string | null
+  responsiblePosition?: string | null
   service?: {
     name?: string
   } | null
@@ -49,6 +59,18 @@ type Booking = {
   confirmedAt?: string | null
   confirmedByType?: string | null
   confirmedByName?: string | null
+  progressStatus?: string | null
+  estimatedDurationMinutes?: number | null
+  estimatedReadyAt?: string | null
+  readyForDeliveryAt?: string | null
+  deliveryAssignedName?: string | null
+  deliveryAssignedRole?: string | null
+  deliveredAt?: string | null
+  deliveredByName?: string | null
+  deliveredByRole?: string | null
+  isDelayedPreparation?: boolean
+  isDelayedDeliveryClaim?: boolean
+  outstandingPreparationRoles?: string[] | null
   client?: {
     fullName?: string | null
     phoneNumber?: string | null
@@ -108,6 +130,17 @@ function StatusBadge({ status }: { status: string }) {
       ].join(' ')}
     >
       {statusLabel(status)}
+    </Badge>
+  )
+}
+
+function ProgressBadge({ status }: { status?: string | null }) {
+  return (
+    <Badge
+      variant='outline'
+      className={cn('border', getBookingProgressTone(status))}
+    >
+      {getBookingProgressLabel(status)}
     </Badge>
   )
 }
@@ -182,7 +215,26 @@ function ItemsView({ items }: { items?: BookingItem[] }) {
               return (
                 <TableRow key={it.id ?? `${name}-${qty}-${price}`}>
                   <TableCell>
-                    <div className='font-medium'>{name}</div>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <div className='font-medium'>{name}</div>
+                      {it.status ? (
+                        <Badge
+                          variant='outline'
+                          className={cn(
+                            'border',
+                            getBookingItemProgressTone(it.status)
+                          )}
+                        >
+                          {getBookingItemProgressLabel(it.status)}
+                        </Badge>
+                      ) : null}
+                      {it.responsiblePosition ? (
+                        <Badge variant='secondary'>
+                          {getResponsibleRoleLabel(it.responsiblePosition) ||
+                            it.responsiblePosition}
+                        </Badge>
+                      ) : null}
+                    </div>
                     {it.note ? (
                       <div className='text-muted-foreground text-xs whitespace-pre-wrap'>
                         Izoh: {it.note}
@@ -283,6 +335,66 @@ function ExpandRow({
         <KeyValue
           label='tasdiqlangan vaqti'
           value={booking.confirmedAt ? fmtDateTime(booking.confirmedAt) : '-'}
+        />
+        <KeyValue
+          label='jarayon'
+          value={<ProgressBadge status={booking.progressStatus} />}
+        />
+        <KeyValue
+          label='tayyorlash muddati'
+          value={
+            booking.estimatedDurationMinutes
+              ? `${booking.estimatedDurationMinutes} daqiqa`
+              : '-'
+          }
+        />
+        <KeyValue
+          label='taxminiy tayyor vaqti'
+          value={booking.estimatedReadyAt ? fmtDateTime(booking.estimatedReadyAt) : '-'}
+        />
+        <KeyValue
+          label='delivery ready vaqti'
+          value={
+            booking.readyForDeliveryAt ? fmtDateTime(booking.readyForDeliveryAt) : '-'
+          }
+        />
+        <KeyValue
+          label='yetkazuvchi'
+          value={
+            booking.deliveryAssignedName
+              ? `${booking.deliveryAssignedName} (${getResponsibleRoleLabel(booking.deliveryAssignedRole) || booking.deliveryAssignedRole || '-'})`
+              : '-'
+          }
+        />
+        <KeyValue
+          label='yetkazilgan vaqti'
+          value={booking.deliveredAt ? fmtDateTime(booking.deliveredAt) : '-'}
+        />
+        <KeyValue
+          label='yetkazgan'
+          value={
+            booking.deliveredByName
+              ? `${booking.deliveredByName} (${getResponsibleRoleLabel(booking.deliveredByRole) || booking.deliveredByRole || '-'})`
+              : '-'
+          }
+        />
+        <KeyValue
+          label='ogohlantirish'
+          value={
+            booking.isDelayedPreparation
+              ? 'Tayyorlash kechikdi'
+              : booking.isDelayedDeliveryClaim
+                ? 'Yetkazuvchi olinmagan'
+                : '-'
+          }
+        />
+        <KeyValue
+          label='qolgan bo`limlar'
+          value={booking.outstandingPreparationRoles?.length
+            ? booking.outstandingPreparationRoles
+                .map((role) => getResponsibleRoleLabel(role) || role)
+                .join(', ')
+            : '-'}
         />
         <KeyValue label='notes' value={booking.notes ?? '-'} />
       </div>
@@ -417,9 +529,25 @@ export function BookingTable({
                       <TableCell className='py-2'>
                         <div className='space-y-1'>
                           <StatusBadge status={booking.status} />
+                          <ProgressBadge status={booking.progressStatus} />
+                          {booking.isDelayedPreparation ? (
+                            <div className='text-xs text-rose-300'>
+                              Tayyorlash kechikdi
+                            </div>
+                          ) : null}
+                          {booking.isDelayedDeliveryClaim ? (
+                            <div className='text-xs text-rose-300'>
+                              Yetkazuvchi olinmagan
+                            </div>
+                          ) : null}
                           {confirmerSummary ? (
                             <div className='text-muted-foreground text-xs'>
                               {confirmerSummary}
+                            </div>
+                          ) : null}
+                          {booking.deliveryAssignedName ? (
+                            <div className='text-muted-foreground text-xs'>
+                              Yetkazuvchi: {booking.deliveryAssignedName}
                             </div>
                           ) : null}
                         </div>

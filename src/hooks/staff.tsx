@@ -1,4 +1,11 @@
-import { staffBookings, staffUpdate, updateBookingStatus } from "@/api/staff"
+import {
+    claimBookingDelivery,
+    completeBookingDelivery,
+    staffBookings,
+    staffUpdate,
+    updateBookingItemProgress,
+    updateBookingStatus,
+} from "@/api/staff"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 export const useGetStaffBookings = (
@@ -6,6 +13,8 @@ export const useGetStaffBookings = (
     options?: {
         search?: string
         status?: string
+        dateFrom?: string
+        dateTo?: string
         pagination?: { page: number; size: number }
     },
 ) => {
@@ -35,6 +44,51 @@ export const useUpdateBookingStatus = () => {
                 queryClient.invalidateQueries({ queryKey: ['business-bookings'] }),
                 queryClient.invalidateQueries({ queryKey: ['client-bookings'] }),
             ])
+        },
+    })
+}
+
+const invalidateBookingQueries = async (queryClient: ReturnType<typeof useQueryClient>) => {
+    await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['staff-bookings'] }),
+        queryClient.invalidateQueries({ queryKey: ['business-bookings'] }),
+        queryClient.invalidateQueries({ queryKey: ['client-bookings'] }),
+    ])
+}
+
+export const useUpdateBookingItemProgress = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationKey: ['booking-item-progress'],
+        mutationFn: (payload: { bookingId: string; itemId: string; status: string }) =>
+            updateBookingItemProgress(payload.bookingId, payload.itemId, payload.status),
+        onSuccess: async () => {
+            await invalidateBookingQueries(queryClient)
+        },
+    })
+}
+
+export const useClaimBookingDelivery = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationKey: ['booking-delivery-claim'],
+        mutationFn: (bookingId: string) => claimBookingDelivery(bookingId),
+        onSuccess: async () => {
+            await invalidateBookingQueries(queryClient)
+        },
+    })
+}
+
+export const useCompleteBookingDelivery = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationKey: ['booking-delivery-complete'],
+        mutationFn: (bookingId: string) => completeBookingDelivery(bookingId),
+        onSuccess: async () => {
+            await invalidateBookingQueries(queryClient)
         },
     })
 }

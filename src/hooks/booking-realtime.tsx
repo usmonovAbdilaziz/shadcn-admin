@@ -40,10 +40,28 @@ export const useBookingRealtimeInvalidation = (
       })
     }
 
-    socket.on('booking:changed', handleBookingChanged)
+    const events = [
+      'booking:changed',
+      'booking.created',
+      'booking.updated',
+      'booking.status_updated',
+      'booking.progress.updated',
+      'booking.item.updated',
+      'booking.ready_for_delivery',
+      'booking.delivery.claimed',
+      'booking.delivered',
+      'booking.warning.preparation_delay',
+      'booking.warning.delivery_unclaimed',
+    ] as const
+
+    events.forEach((eventName) => {
+      socket.on(eventName, handleBookingChanged)
+    })
 
     return () => {
-      socket.off('booking:changed', handleBookingChanged)
+      events.forEach((eventName) => {
+        socket.off(eventName, handleBookingChanged)
+      })
     }
   }, [enabled, queryClient, queryKeys, socket])
 }

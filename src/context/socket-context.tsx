@@ -28,6 +28,17 @@ export const SocketProvider: React.FC<{
   const storedTableId = useClientStore((state) => state.tableId)
   const clientId = useClientStore((state) => state.clientId)
   const activeTableId = tableId ?? storedTableId
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}')
+    } catch {
+      return {}
+    }
+  })()
+  const staffId = storedUser?.staffId || storedUser?.id || null
+  const staffBusinessId =
+    storedUser?.businessId || storedUser?.business?.id || null
+  const staffPosition = storedUser?.position || null
 
   useEffect(() => {
     socket.connect()
@@ -70,6 +81,43 @@ export const SocketProvider: React.FC<{
       socket.off('connect', joinClientRoom)
     }
   }, [clientId])
+
+  useEffect(() => {
+    const joinStaffRoom = () => {
+      if (!staffId || !staffPosition) return
+      socket.emit('joinStaffRoom', { staffId })
+    }
+
+    socket.on('connect', joinStaffRoom)
+
+    if (socket.connected) {
+      joinStaffRoom()
+    }
+
+    return () => {
+      socket.off('connect', joinStaffRoom)
+    }
+  }, [staffId, staffPosition])
+
+  useEffect(() => {
+    const joinStaffRoleRoom = () => {
+      if (!staffBusinessId || !staffPosition) return
+      socket.emit('joinStaffRoleRoom', {
+        businessId: staffBusinessId,
+        position: staffPosition,
+      })
+    }
+
+    socket.on('connect', joinStaffRoleRoom)
+
+    if (socket.connected) {
+      joinStaffRoleRoom()
+    }
+
+    return () => {
+      socket.off('connect', joinStaffRoleRoom)
+    }
+  }, [staffBusinessId, staffPosition])
 
   return (
     <SocketContext.Provider value={{ socket }}>

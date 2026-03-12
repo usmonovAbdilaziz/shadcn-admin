@@ -1,10 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, Clock, Package, Phone, User } from 'lucide-react'
 import { useGetClientMe } from '@/hooks/client'
 import { useGetClientBookings } from '@/hooks/booking'
 import { useBookingRealtimeInvalidation } from '@/hooks/booking-realtime'
-import { getBookingStatusLabel, getBookingStatusTone } from '@/lib/booking-status'
+import {
+  getBookingItemProgressLabel,
+  getBookingProgressLabel,
+  getBookingProgressTone,
+} from '@/lib/booking-progress'
 import { cn } from '@/lib/utils'
 import { useClientStore } from '@/store/use-client-store'
 import {
@@ -23,6 +27,7 @@ type ProfileBookingItem = {
   qty: number
   priceSnapshot: number
   note?: string | null
+  status?: string | null
   product?: {
     name?: string | null
   } | null
@@ -33,15 +38,39 @@ type ProfileBooking = {
   createdAt: string
   price?: number | string | null
   status: string
+  progressStatus?: string | null
+  estimatedDurationMinutes?: number
+  estimatedReadyAt?: string | null
+  readyForDeliveryAt?: string | null
+  deliveredAt?: string | null
+  deliveryAssignedName?: string | null
   table?: {
     tableNumber?: number | null
   } | null
   items?: ProfileBookingItem[]
 }
 
+const PROGRESS_STEPS = [
+  'PENDING',
+  'PREPARING',
+  'READY_FOR_DELIVERY',
+  'DELIVERING',
+  'DELIVERED',
+] as const
+
+const getProgressStepIndex = (status?: string | null) => {
+  const normalized = String(status || '').toUpperCase()
+  return PROGRESS_STEPS.indexOf(
+    (PROGRESS_STEPS.includes(normalized as (typeof PROGRESS_STEPS)[number])
+      ? normalized
+      : 'PENDING') as (typeof PROGRESS_STEPS)[number]
+  )
+}
+
 export const ClientProfile = () => {
   const { token, phone, logout, clientId, setClientId } = useClientStore()
   const navigate = useNavigate()
+  const [now, setNow] = useState(() => Date.now())
   const meQuery = useGetClientMe(token || '')
 
   const resolvedClientId =
@@ -58,6 +87,16 @@ export const ClientProfile = () => {
       setClientId(resolvedClientId)
     }
   }, [clientId, resolvedClientId, setClientId])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNow(Date.now())
+    }, 30_000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   if (!token) {
     return (
@@ -88,6 +127,52 @@ export const ClientProfile = () => {
     meQuery.data?.data?.phone ||
     meQuery.data?.data?.phoneNumber ||
     '-'
+
+  const getProgressHint = (order: ProfileBooking) => {
+    const progressStatus = String(order.progressStatus || order.status || '').toUpperCase()
+
+    if (progressStatus === 'DELIVERED') {
+      return order.deliveredAt
+        ? `Yetkazildi: ${new Date(order.deliveredAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}`
+        : 'Buyurtma yetkazildi'
+    }
+
+    if (progressStatus === 'DELIVERING') {
+      return order.deliveryAssignedName
+        ? `${order.deliveryAssignedName} buyurtmani olib ketdi`
+        : 'Buyurtma yetkazilmoqda'
+    }
+
+    if (progressStatus === 'READY_FOR_DELIVERY') {
+      return 'Buyurtma tayyor, yetkazuvchi kutilmoqda'
+    }
+
+    if (progressStatus === 'CANCELLED') {
+      return 'Buyurtma bekor qilingan'
+    }
+
+    const estimatedReadyAtMs = order.estimatedReadyAt
+      ? new Date(order.estimatedReadyAt).getTime()
+      : order.estimatedDurationMinutes
+        ? new Date(order.createdAt).getTime() +
+          order.estimatedDurationMinutes * 60 * 1000
+        : null
+
+    if (estimatedReadyAtMs == null) {
+      return 'Jarayon davom etmoqda'
+    }
+
+    const diffMinutes = Math.round((estimatedReadyAtMs - now) / 60000)
+
+    if (diffMinutes > 0) {
+      return `Taxminan ${diffMinutes} daqiqa qoldi`
+    }
+
+    return 'Buyurtma biroz kechikmoqda'
+  }
 
   return (
     <div className='mt-20 flex flex-col items-center px-4 pb-20'>
@@ -195,10 +280,10 @@ export const ClientProfile = () => {
                             variant='outline'
                             className={cn(
                               'border',
-                              getBookingStatusTone(order.status)
+                              getBookingProgressTone(order.progressStatus || order.status)
                             )}
                           >
-                            {getBookingStatusLabel(order.status)}
+                            {getBookingProgressLabel(order.progressStatus || order.status)}
                           </Badge>
 
                           <div className='text-lg font-bold'>{total} so'm</div>
@@ -207,6 +292,37 @@ export const ClientProfile = () => {
                     </AccordionTrigger>
 
                     <AccordionContent className='px-4 pb-4'>
+                      <div className='rounded-xl border border-border/60 bg-muted/20 p-3'>
+                        <div className='text-xs text-muted-foreground'>
+                          Jarayon holati
+                        </div>
+                        <div className='mt-3 flex flex-wrap gap-2'>
+                          {PROGRESS_STEPS.map((step, index) => {
+                            const currentIndex = getProgressStepIndex(
+                              order.progressStatus || order.status
+                            )
+                            const isActive = index <= currentIndex
+
+                            return (
+                              <div
+                                key={step}
+                                className={cn(
+                                  'rounded-full border px-3 py-1 text-xs',
+                                  isActive
+                                    ? 'border-primary/40 bg-primary/15 text-primary'
+                                    : 'border-border/60 bg-background/40 text-muted-foreground'
+                                )}
+                              >
+                                {getBookingProgressLabel(step)}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div className='mt-3 text-sm text-muted-foreground'>
+                          {getProgressHint(order)}
+                        </div>
+                      </div>
+
                       <div className='mt-2 space-y-1 border-t pt-3'>
                         {order.items?.map((item: ProfileBookingItem) => (
                           <div
@@ -217,6 +333,11 @@ export const ClientProfile = () => {
                               <div className='text-muted-foreground'>
                                 {item.product?.name || item.productId} x{item.qty}
                               </div>
+                              {item.status ? (
+                                <div className='mt-1 text-xs text-muted-foreground'>
+                                  Holat: {getBookingItemProgressLabel(item.status)}
+                                </div>
+                              ) : null}
                               {item.note ? (
                                 <div className='text-muted-foreground mt-1 whitespace-pre-wrap text-xs'>
                                   Izoh: {item.note}

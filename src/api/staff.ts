@@ -17,12 +17,20 @@ export const staffBookings = async (
   options?: {
     search?: string
     status?: string
+    dateFrom?: string
+    dateTo?: string
     pagination?: { page: number; size: number }
   }
 ) => {
   const params = new URLSearchParams({ type: position })
   if (options?.status) {
     params.append('status', options.status)
+  }
+  if (options?.dateFrom) {
+    params.append('dateFrom', options.dateFrom)
+  }
+  if (options?.dateTo) {
+    params.append('dateTo', options.dateTo)
   }
   if (options?.pagination) {
     params.append('page', options.pagination.page.toString())
@@ -52,6 +60,37 @@ export const updateBookingStatus = async (bookingId: string, status: string) => 
   const res = await axios.patch(
     `${baseApiv1}/booking/${bookingId}/status`,
     { status },
+    getBearerConfig(),
+  )
+  return res.data
+}
+
+export const updateBookingItemProgress = async (
+  bookingId: string,
+  itemId: string,
+  status: string
+) => {
+  const res = await axios.patch(
+    `${baseApiv1}/booking/${bookingId}/items/${itemId}/progress`,
+    { status },
+    getBearerConfig(),
+  )
+  return res.data
+}
+
+export const claimBookingDelivery = async (bookingId: string) => {
+  const res = await axios.patch(
+    `${baseApiv1}/booking/${bookingId}/delivery/claim`,
+    {},
+    getBearerConfig(),
+  )
+  return res.data
+}
+
+export const completeBookingDelivery = async (bookingId: string) => {
+  const res = await axios.patch(
+    `${baseApiv1}/booking/${bookingId}/delivery/complete`,
+    {},
     getBearerConfig(),
   )
   return res.data

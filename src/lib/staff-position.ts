@@ -73,6 +73,10 @@ export const normalizeStaffPosition = (
 ): StaffPosition | null => {
   const normalized = String(position || '').toUpperCase()
 
+  if (normalized === 'CHEF') {
+    return 'COOK'
+  }
+
   if (normalized === 'BARMAN') {
     return 'BARMEN'
   }

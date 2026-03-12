@@ -24,7 +24,7 @@ type BookingItem = {
   }
 }
 
-type Booking = {
+export type Booking = {
   id: string
   status: string
   createdAt?: string
