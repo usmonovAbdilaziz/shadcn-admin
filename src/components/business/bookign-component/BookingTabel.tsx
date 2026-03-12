@@ -128,7 +128,7 @@ function ItemsView({ items }: { items: any[] }) {
                   <TableCell>
                     <div className='font-medium'>{name}</div>
                     {it.note ? (
-                      <div className='text-muted-foreground text-xs'>
+                      <div className='text-muted-foreground whitespace-pre-wrap text-xs'>
                         Izoh: {it.note}
                       </div>
                     ) : null}

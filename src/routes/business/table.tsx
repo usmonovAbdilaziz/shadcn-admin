@@ -6,14 +6,6 @@ export const Route = createFileRoute('/business/table')({
 })
 
 function RouteComponent() {
-    const user =JSON.parse(localStorage.getItem("user")!)
-  if(user){
-    if(user.userType !== 'BUSINESS') {
-      window.location.href = '/admin'
-    }
-  }else{
-      window.location.href = '/'
-  }
   return (
     <div>
       <BusinessTable />

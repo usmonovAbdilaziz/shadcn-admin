@@ -1,19 +1,15 @@
 // import { useLayout } from '@/context/layout-provider'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from '@/components/ui/sidebar'
+import { useEffect, useState } from 'react';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from '@/components/ui/sidebar';
+import { sidebarAdminData } from './data/sidebar-admin-data';
 // import { AppTitle } from './app-title'
-import { sidebarBusinessData } from './data/sidebar-business-data'
-import { NavGroup } from './nav-group'
-import { NavUser } from './nav-user'
+import { sidebarBusinessData } from './data/sidebar-business-data';
+import { sidebarStaffData } from './data/sidebar-staff-data';
+import { NavGroup } from './nav-group';
+import { NavUser } from './nav-user';
 import { TeamSwitcher } from './team-switcher'
-import { useEffect, useState } from 'react'
 import { SidebarData } from './types'
-import { sidebarAdminData } from './data/sidebar-admin-data'
+
 
 export function AppSidebar() {
   const [sidebarData,setSidebarData]=useState<SidebarData>(sidebarBusinessData)
@@ -25,6 +21,8 @@ if(user){
     setSidebarData(sidebarBusinessData)
   }else if(user.userType==='ADMIN'){
     setSidebarData(sidebarAdminData)
+  }else if(user.userType==='STAFF'){
+    setSidebarData(sidebarStaffData)
   }
 }
   },[user])

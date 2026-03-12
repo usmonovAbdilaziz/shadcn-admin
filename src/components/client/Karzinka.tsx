@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router'
+import { type CartItem, useCartStore } from '@/store/use-cart-store'
+import { useClientStore } from '@/store/use-client-store'
 import {
   Minus,
   Plus,
@@ -9,21 +12,56 @@ import {
   Loader2,
   ExternalLink,
   CheckCircle2,
+  PencilLine,
 } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
-import { useCreateBooking } from '@/hooks/booking'
 import { useSocket } from '@/context/socket-context'
-import { useCartStore } from '@/store/use-cart-store'
-import { useClientStore } from '@/store/use-client-store'
+import { useCreateBooking } from '@/hooks/booking'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
-import { Badge } from '../ui/badge'
+import { Collapsible, CollapsibleContent } from '../ui/collapsible'
 import { Modal } from '../ui/modal'
+import { Textarea } from '../ui/textarea'
 
 interface KarzinkaProps {
-  services: any
   onBack: () => void
   onOrder: () => void
+}
+
+const MAX_ITEM_DESCRIPTION_LENGTH = 250
+
+const formatItemOptions = (item: CartItem) => {
+  const labels: string[] = []
+
+  if (item.options?.liter) {
+    labels.push(`${item.options.liter}L`)
+  }
+
+  if (item.options?.teaOptions) {
+    labels.push(
+      `${item.options.teaOptions.teaColor}${
+        item.options.teaOptions.lemon ? ' + limon' : ''
+      }`
+    )
+  }
+
+  return labels.join(', ')
+}
+
+const buildBookingItemNote = (item: CartItem) => {
+  const parts: string[] = []
+  const optionSummary = formatItemOptions(item)
+  const description = item.description?.trim()
+
+  if (optionSummary) {
+    parts.push(optionSummary)
+  }
+
+  if (description) {
+    parts.push(`Izoh: ${description}`)
+  }
+
+  return parts.join(' | ') || undefined
 }
 
 export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
@@ -31,21 +69,20 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     items: cartItems,
     updateQty,
     removeFromCart,
+    setItemDescription,
     totalPrice,
     totalItems,
   } = useCartStore()
-  const {
-    setAuth,
-    tableId,
-    token,
-    orderSessionId,
-    setOrderSessionId,
-  } = useClientStore()
+  const { setAuth, tableId, orderSessionId, setOrderSessionId } =
+    useClientStore()
   const navigate = useNavigate()
   const { mutateAsync: createBooking } = useCreateBooking()
   const socket = useSocket() as any
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [descriptionOpenMap, setDescriptionOpenMap] = useState<
+    Record<string, boolean>
+  >({})
   const [showConfirmModal, setShowConfirmModal] = useState(() => {
     return localStorage.getItem('showConfirmModal') === 'true'
   })
@@ -85,47 +122,65 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     }, 2000)
   }
 
-  const submitAuthorizedBooking = async (idempotencyKey: string) => {
-    const formatItemNote = (item: any) => {
-      const labels: string[] = []
-
-      if (item.options?.liter) {
-        labels.push(`${item.options.liter}L`)
-      }
-
-      if (item.options?.teaOptions) {
-        labels.push(
-          `${item.options.teaOptions.teaColor}${
-            item.options.teaOptions.lemon ? ' + limon' : ''
-          }`
-        )
-      }
-
-      return labels.join(', ') || undefined
-    }
-
-    const result = await createBooking({
-      tableId: tableId!,
-      idempotencyKey,
-      items: cartItems.map((item: any) => ({
-        productId: item.serviceId,
-        qty: item.qty,
-        priceSnapshot: item.priceSnapshot,
-        note: formatItemNote(item),
-      })),
-    })
-
-    const bookingData = result.data
-    const confirmedOrder = {
-      id: bookingData.id,
-      status: 'CONFIRMED',
-    }
-    setPendingOrder(confirmedOrder)
-    setShowConfirmModal(true)
-    handleConfirmAction(confirmedOrder)
+  const toggleDescription = (itemId: string) => {
+    setDescriptionOpenMap((prev) => ({
+      ...prev,
+      [itemId]: !prev[itemId],
+    }))
   }
 
-  const openTelegramLink = (telegramAppLink?: string, telegramLink?: string) => {
+  const handleDescriptionChange = (itemId: string, value: string) => {
+    setItemDescription(itemId, value.slice(0, MAX_ITEM_DESCRIPTION_LENGTH))
+  }
+
+  const submitAuthorizedBooking = async (idempotencyKey: string) => {
+    try {
+      const result = await createBooking({
+        tableId: tableId!,
+        idempotencyKey,
+        items: cartItems.map((item: CartItem) => ({
+          productId: item.serviceId,
+          qty: item.qty,
+          priceSnapshot: item.priceSnapshot,
+          note: buildBookingItemNote(item),
+        })),
+      })
+
+      const bookingData = result.data
+      const confirmedOrder = {
+        id: bookingData.id,
+        status: 'CONFIRMED',
+      }
+      setPendingOrder(confirmedOrder)
+      setShowConfirmModal(true)
+      handleConfirmAction(confirmedOrder)
+    } catch (error: any) {
+      if (
+        error.response?.status === 403 &&
+        error.response.data?.data?.telegramLink
+      ) {
+        const sessionData = error.response.data.data
+        setOrderSessionId(sessionData.orderSessionId)
+        const newPendingOrder = {
+          id: sessionData.orderSessionId,
+          telegramAppUrl: sessionData.telegramAppLink,
+          telegramUrl: sessionData.telegramLink,
+          status: 'AWAITING_TELEGRAM',
+        }
+        setPendingOrder(newPendingOrder)
+        setShowConfirmModal(true)
+
+        openTelegramLink(sessionData.telegramAppLink, sessionData.telegramLink)
+      } else {
+        throw error
+      }
+    }
+  }
+
+  const openTelegramLink = (
+    telegramAppLink?: string,
+    telegramLink?: string
+  ) => {
     const targetLink = telegramAppLink || telegramLink
     if (!targetLink) return
     window.open(targetLink, '_blank')
@@ -135,12 +190,30 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     const handleAuthToken = async (data: any) => {
       if (!data || data.tableId !== tableId) return
       if (orderSessionId && data.orderSessionId !== orderSessionId) return
+      let tokenToUse = data.token
+
+      // If server included expiry and token is already expired, try to fetch a fresh token
+      if (
+        data.tokenExpiresAt &&
+        Date.parse(data.tokenExpiresAt) <= Date.now()
+      ) {
+        try {
+          const resp = await fetch(`/api/telegram/order/${data.orderId}/token`)
+          if (resp.ok) {
+            const body = await resp.json()
+            tokenToUse = body.data?.token || tokenToUse
+          }
+        } catch (err) {
+          console.error('Failed to refresh token from server:', err)
+        }
+      }
 
       setAuth({
-        token: data.token,
+        token: tokenToUse,
         user: data.user,
       })
-      localStorage.setItem('token', data.token)
+      localStorage.removeItem('token')
+      localStorage.setItem('token', tokenToUse)
       setOrderSessionId(null)
 
       try {
@@ -162,7 +235,15 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     return () => {
       socket.off('auth:token', handleAuthToken)
     }
-  }, [socket, tableId, orderSessionId, cartItems, createBooking, setAuth, setOrderSessionId])
+  }, [
+    socket,
+    tableId,
+    orderSessionId,
+    cartItems,
+    createBooking,
+    setAuth,
+    setOrderSessionId,
+  ])
 
   const handleSubmit = async () => {
     if (isSubmitting || !tableId) return
@@ -172,32 +253,7 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
       const idempotencyKey = pendingBookingKeyRef.current ?? crypto.randomUUID()
       pendingBookingKeyRef.current = idempotencyKey
 
-      if (token) {
-        await submitAuthorizedBooking(idempotencyKey)
-        return
-      }
-
-      socket.emit('order:start', { tableId }, (response: any) => {
-        if (!response?.success) {
-          alert(
-            response?.error?.message || 'Telegram sessiyasini boshlab bo‘lmadi.'
-          )
-          return
-        }
-
-        const sessionData = response.data
-        setOrderSessionId(sessionData.orderSessionId)
-        const newPendingOrder = {
-          id: sessionData.orderSessionId,
-          telegramAppUrl: sessionData.telegramAppLink,
-          telegramUrl: sessionData.telegramLink,
-          status: 'AWAITING_TELEGRAM',
-        }
-        setPendingOrder(newPendingOrder)
-        setShowConfirmModal(true)
-
-        openTelegramLink(sessionData.telegramAppLink, sessionData.telegramLink)
-      })
+      await submitAuthorizedBooking(idempotencyKey)
     } catch (error) {
       console.error('Buyurtma yuborishda xatolik:', error)
       alert("Buyurtma yuborishda xatolik yuz berdi. Qayta urinib ko'ring.")
@@ -210,11 +266,11 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
     return (
       <div className='mt-20 flex w-full flex-col items-center pb-20'>
         <Card className='mx-4 w-full max-w-2xl p-8 text-center'>
-          <ShoppingCart className='mx-auto mb-4 h-16 w-16 text-muted-foreground/40' />
-          <h2 className='mb-2 text-xl font-semibold text-muted-foreground'>
+          <ShoppingCart className='text-muted-foreground/40 mx-auto mb-4 h-16 w-16' />
+          <h2 className='text-muted-foreground mb-2 text-xl font-semibold'>
             Savat bo'sh
           </h2>
-          <p className='mb-6 text-sm text-muted-foreground'>
+          <p className='text-muted-foreground mb-6 text-sm'>
             Hali hech qanday mahsulot tanlanmagan
           </p>
           <Button
@@ -235,24 +291,29 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
       <div className='w-full max-w-3xl px-4'>
         <div className='mb-6 flex items-center justify-between'>
           <div className='flex items-center gap-3'>
-            <ShoppingCart className='h-6 w-6 text-primary' />
+            <ShoppingCart className='text-primary h-6 w-6' />
             <h1 className='text-2xl font-bold tracking-tight'>
               Sizning savatchangiz
             </h1>
           </div>
-          <Badge variant='secondary' className='px-3 py-1 text-sm font-semibold'>
+          <Badge
+            variant='secondary'
+            className='px-3 py-1 text-sm font-semibold'
+          >
             {totalItems} ta mahsulot
           </Badge>
         </div>
 
         <div className='space-y-3'>
-          {cartItems.map((item: any) => {
+          {cartItems.map((item: CartItem) => {
             const itemTotal = item.priceSnapshot * item.qty
+            const isDescriptionOpen = !!descriptionOpenMap[item.id]
+            const hasDescription = Boolean(item.description?.trim())
 
             return (
               <Card
                 key={item.id}
-                className='overflow-hidden border-border/60 transition-all duration-200 hover:shadow-md'
+                className='border-border/60 overflow-hidden transition-all duration-200 hover:shadow-md'
               >
                 <div className='flex gap-4 p-4'>
                   <div className='h-20 w-20 shrink-0 overflow-hidden rounded-xl'>
@@ -285,18 +346,38 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
                             </Badge>
                           )}
                         </div>
-                        <p className='mt-1 truncate text-xs italic text-muted-foreground'>
+                        <p className='text-muted-foreground mt-1 truncate text-xs italic'>
                           {item.service.description}
                         </p>
+                        {hasDescription ? (
+                          <p className='text-muted-foreground mt-2 line-clamp-2 text-xs'>
+                            <span className='text-foreground font-medium'>
+                              Izoh:
+                            </span>{' '}
+                            {item.description?.trim()}
+                          </p>
+                        ) : null}
                       </div>
-                      <Button
-                        variant='ghost'
-                        size='icon'
-                        className='h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive'
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        <Trash2 className='h-4 w-4' />
-                      </Button>
+                      <div className='flex shrink-0 items-center gap-1'>
+                        <Button
+                          variant='ghost'
+                          size='icon'
+                          className='h-8 w-8'
+                          aria-label='Izohni tahrirlash'
+                          onClick={() => toggleDescription(item.id)}
+                        >
+                          <PencilLine className='h-4 w-4' />
+                        </Button>
+                        <Button
+                          variant='ghost'
+                          size='icon'
+                          className='text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8'
+                          aria-label='Mahsulotni o‘chirish'
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className='mt-2 flex items-center justify-between'>
@@ -329,6 +410,49 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
                         </span>
                       </div>
                     </div>
+
+                    <Collapsible open={isDescriptionOpen}>
+                      <CollapsibleContent className='pt-3'>
+                        <div className='rounded-xl border border-dashed p-3'>
+                          <div className='mb-2 flex items-center justify-between gap-2'>
+                            <p className='text-sm font-medium'>
+                              Buyurtma uchun izoh
+                            </p>
+                            {hasDescription ? (
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                className='h-7 px-2 text-xs'
+                                onClick={() =>
+                                  handleDescriptionChange(item.id, '')
+                                }
+                              >
+                                Tozalash
+                              </Button>
+                            ) : null}
+                          </div>
+                          <Textarea
+                            value={item.description ?? ''}
+                            maxLength={MAX_ITEM_DESCRIPTION_LENGTH}
+                            placeholder="Masalan: shakar kamroq, achchiqsiz, sous alohida bo'lsin"
+                            className='min-h-24 resize-none'
+                            onChange={(event) =>
+                              handleDescriptionChange(
+                                item.id,
+                                event.target.value
+                              )
+                            }
+                          />
+                          <div className='text-muted-foreground mt-2 flex items-center justify-between text-xs'>
+                            <span>Bo'sh qoldirilsa `null` bo'lib yuboriladi.</span>
+                            <span>
+                              {(item.description ?? '').length}/
+                              {MAX_ITEM_DESCRIPTION_LENGTH}
+                            </span>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
                 </div>
               </Card>
@@ -336,18 +460,18 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
           })}
         </div>
 
-        <Card className='mt-6 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 p-5'>
+        <Card className='border-primary/30 from-primary/5 to-primary/10 mt-6 bg-gradient-to-r p-5'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-sm text-muted-foreground'>Umumiy summa</p>
+              <p className='text-muted-foreground text-sm'>Umumiy summa</p>
               <p className='text-2xl font-extrabold tracking-tight'>
                 {totalPrice.toLocaleString()}{' '}
-                <span className='text-sm font-medium text-muted-foreground'>
+                <span className='text-muted-foreground text-sm font-medium'>
                   so'm
                 </span>
               </p>
             </div>
-            <Package className='h-8 w-8 text-primary/50' />
+            <Package className='text-primary/50 h-8 w-8' />
           </div>
         </Card>
       </div>
@@ -381,13 +505,16 @@ export const Karzinka = ({ onBack, onOrder }: KarzinkaProps) => {
             </>
           ) : (
             <>
-              <div className='rounded-full bg-blue-100 p-4 animate-pulse dark:bg-blue-500/10'>
+              <div className='animate-pulse rounded-full bg-blue-100 p-4 dark:bg-blue-500/10'>
                 <Loader2 className='h-12 w-12 animate-spin text-blue-500' />
               </div>
               <div className='space-y-2'>
-                <h3 className='text-xl font-bold'>Telegram orqali tasdiqlang</h3>
+                <h3 className='text-xl font-bold'>
+                  Telegram orqali tasdiqlang
+                </h3>
                 <p className='text-muted-foreground'>
-                  Davom etish uchun Telegram botda telefon raqamingizni yuboring.
+                  Davom etish uchun Telegram botda telefon raqamingizni
+                  yuboring.
                 </p>
               </div>
               <div className='flex w-full flex-col gap-2'>

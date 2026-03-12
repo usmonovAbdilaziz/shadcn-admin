@@ -173,7 +173,6 @@ export const ClientDashboard = () => {
       <ClientSocketProvider>
         <ClientHeader />
 
-        {/* Table selection modal — cannot be dismissed without selecting a table */}
         <Modal
           open={open}
           onClose={() => {

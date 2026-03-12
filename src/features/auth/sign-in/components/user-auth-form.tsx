@@ -6,35 +6,19 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { Loader2, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { IconFacebook, IconGithub } from '@/assets/brand-icons';
-import { cn } from '@/lib/utils'
-import { useLogin, useStaffLogin } from '@/hooks/sign'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/password-input'
+import { cn } from '@/lib/utils';
+import { useLogin, useStaffLogin } from '@/hooks/sign';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/password-input';
+
 
 const formSchema = z
   .object({
     mode: z.enum(['business', 'staff']),
-    email: z
-      .string()
-      .email({
-        error: (iss) =>
-          iss.input === '' ? 'Please enter your email' : undefined,
-      })
-      .optional(),
-    password: z
-      .string()
-      .min(1, 'Please enter your password')
-      .min(7, 'Password must be at least 7 characters long')
-      .optional(),
+    email: z.string().optional(),
+    password: z.string().optional(),
     fullName: z.string().optional(),
     phoneNumber: z.string().optional(),
   })
@@ -46,8 +30,24 @@ const formSchema = z
           message: 'Email is required',
           path: ['email'],
         })
+      } else {
+        const emailCheck = z.string().email().safeParse(data.email)
+        if (!emailCheck.success) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Please enter a valid email',
+            path: ['email'],
+          })
+        }
       }
-      if (!data.password || data.password.length < 7) {
+
+      if (!data.password) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Password is required',
+          path: ['password'],
+        })
+      } else if ((data.password || '').length < 7) {
         ctx.addIssue({
           code: 'custom',
           message: 'Password must be at least 7 characters',
@@ -116,13 +116,22 @@ export function UserAuthForm({
       staffLogin(payload, {
         onSuccess: (resp) => {
           setIsLoading(false)
-          localStorage.setItem('token', resp.data.token)
-          localStorage.setItem('user', JSON.stringify(resp.data.user))
+          // backend responses sometimes wrapped in { success, data } — handle both shapes
+          const body = (resp && (resp as any).data) || resp || {}
+          const token =
+            (body && (body.token || body.data?.token)) || (resp as any).token
+          const user = body.user || body.staff || body.data?.user || null
+          if (token) localStorage.setItem('token', token)
+          if (user) {
+            // Ensure staff responses include a userType so route guards work
+            if (!(user as any).userType) (user as any).userType = 'STAFF'
+            localStorage.setItem('user', JSON.stringify(user))
+          }
           navigate({ to: '/staff', replace: true })
         },
         onError: (error: any) => {
           setIsLoading(false)
-          toast.error(error.message || 'Login failed')
+          toast.error(error?.message || 'Login failed')
         },
       })
       return
@@ -133,10 +142,13 @@ export function UserAuthForm({
       {
         onSuccess: (resp) => {
           setIsLoading(false)
-          localStorage.setItem('token', resp.data.token)
-          localStorage.setItem('user', JSON.stringify(resp.data.user))
-          const user = resp.data.user
-          const role = (user.userType || (user as any).type) as string
+          const body = (resp && (resp as any).data) || resp || {}
+          const token =
+            (body && (body.token || body.data?.token)) || (resp as any).token
+          const user = body.user || body.data?.user || null
+          if (token) localStorage.setItem('token', token)
+          if (user) localStorage.setItem('user', JSON.stringify(user))
+          const role = (user?.userType || (user as any)?.type) as string
           if (role === 'STAFF') {
             navigate({ to: '/staff', replace: true })
           } else if (role === 'BUSINESS') {
@@ -151,7 +163,7 @@ export function UserAuthForm({
         },
         onError: (error: any) => {
           setIsLoading(false)
-          toast.error(error.message || 'Login failed')
+          toast.error(error?.message || 'Login failed')
         },
       }
     )
@@ -161,6 +173,30 @@ export function UserAuthForm({
     setMode(next)
     form.setValue('mode', next, { shouldValidate: false, shouldDirty: true })
     form.clearErrors()
+  }
+
+  const handleSubmitClick = () => {
+    toast.message?.(undefined)
+    try {
+      const onInvalid = (errs: any) => {
+        const msgs: string[] = []
+        for (const k of Object.keys(errs || {})) {
+          const e = errs[k]
+          if (!e) continue
+          if (e.message) msgs.push(String(e.message))
+          else if (e.types) msgs.push(...Object.values(e.types).map(String))
+        }
+        if (msgs.length) {
+          toast.error(msgs[0])
+        } else {
+          toast.error('Validation failed')
+        }
+      }
+
+      form.handleSubmit(onSubmit, onInvalid)()
+    } catch (e) {
+      // ignore
+    }
   }
 
   return (
@@ -251,7 +287,12 @@ export function UserAuthForm({
             </FormItem>
           )}
         />
-        <Button type='submit' className='mt-2' disabled={isLoading}>
+        <Button
+          type='submit'
+          className='mt-2'
+          disabled={isLoading}
+          onClick={handleSubmitClick}
+        >
           {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
           Sign in
         </Button>

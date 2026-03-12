@@ -1,3 +1,4 @@
+import { AdminServices } from '@/components/admin/services'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin/service')({
@@ -5,5 +6,5 @@ export const Route = createFileRoute('/admin/service')({
 })
 
 function RouteComponent() {
-  return <div>Hello "service"!</div>
+  return <AdminServices/>
 }

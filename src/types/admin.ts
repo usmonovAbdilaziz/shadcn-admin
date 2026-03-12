@@ -1,17 +1,18 @@
-export interface IAdminUsers{
-    createdAt:string
-email:string
-fullName:string
-gender:string
-id:string
-isActive:boolean
-isVerified:boolean
-password:string
-phoneNumber:string
-profilePhoto:string|null
-telegramUsername:string|null
-updatedAt:string
-userType:"BUSINESS"|"ADMIN"
+export interface IAdminUsers {
+  createdAt: string
+  email: string
+  fullName: string
+  gender: string
+  id: string
+  isActive: boolean
+  isVerified: boolean
+  password: string
+  phoneNumber: string
+  profilePhoto: string | null
+  telegramUsername: string | null
+  updatedAt: string
+  position: string
+  business:IBusinessData
 }
 export  interface UpdateUsers extends Partial<IAdminUsers>{}
 

@@ -1,12 +1,11 @@
 export enum Position {
-  WAITER = 'WAITER',
-  CHEF = 'CHEF',
-  WAITRESS = 'WAITRESS',
-  COOK = 'COOK',
-  BARISTA = 'BARISTA',
-  HOST = 'HOST',
-  HOSTESS = 'HOSTESS',
   MANAGER = 'MANAGER',
+  CASHIER = 'CASHIER',
+  COOK = 'COOK',
+  BARMAN = 'BARMEN',
+  RUNNER = 'RUNNER',
+  CLEANER = 'CLEANER',
+  WAITER = 'WAITER',
 }
 export interface AddStaff {
   businessId: string

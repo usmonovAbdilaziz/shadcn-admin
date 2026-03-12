@@ -208,12 +208,18 @@ export const ClientProfile = () => {
                         {order.items?.map((item: any) => (
                           <div
                             key={item.id}
-                            className='flex justify-between text-sm'
+                            className='flex items-start justify-between gap-3 text-sm'
                           >
-                            <span className='text-muted-foreground'>
-                              {item.product?.name || item.productId}
-                              {item.note ? ` (${item.note})` : ''} x{item.qty}
-                            </span>
+                            <div className='min-w-0'>
+                              <div className='text-muted-foreground'>
+                                {item.product?.name || item.productId} x{item.qty}
+                              </div>
+                              {item.note ? (
+                                <div className='text-muted-foreground mt-1 whitespace-pre-wrap text-xs'>
+                                  Izoh: {item.note}
+                                </div>
+                              ) : null}
+                            </div>
                             <span>{item.priceSnapshot * item.qty} so'm</span>
                           </div>
                         ))}

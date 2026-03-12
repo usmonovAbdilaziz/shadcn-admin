@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClientRouteImport } from './routes/client'
+import { Route as StaffRouteRouteImport } from './routes/staff/route'
+import { Route as BusinessRouteRouteImport } from './routes/business/route'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as BusinessIndexRouteImport } from './routes/business/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as StaffBookingsRouteImport } from './routes/staff/bookings'
 import { Route as ClientProfileRouteImport } from './routes/client/profile'
 import { Route as BusinessUsersRouteImport } from './routes/business/users'
 import { Route as BusinessTableRouteImport } from './routes/business/table'
@@ -40,24 +43,39 @@ const ClientRoute = ClientRouteImport.update({
   path: '/client',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffRouteRoute = StaffRouteRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessRouteRoute = BusinessRouteRouteImport.update({
+  id: '/business',
+  path: '/business',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaffIndexRoute = StaffIndexRouteImport.update({
-  id: '/staff/',
-  path: '/staff/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => StaffRouteRoute,
 } as any)
 const BusinessIndexRoute = BusinessIndexRouteImport.update({
-  id: '/business/',
-  path: '/business/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => BusinessRouteRoute,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => rootRouteImport,
+const StaffBookingsRoute = StaffBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => StaffRouteRoute,
 } as any)
 const ClientProfileRoute = ClientProfileRouteImport.update({
   id: '/profile',
@@ -65,39 +83,39 @@ const ClientProfileRoute = ClientProfileRouteImport.update({
   getParentRoute: () => ClientRoute,
 } as any)
 const BusinessUsersRoute = BusinessUsersRouteImport.update({
-  id: '/business/users',
-  path: '/business/users',
-  getParentRoute: () => rootRouteImport,
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => BusinessRouteRoute,
 } as any)
 const BusinessTableRoute = BusinessTableRouteImport.update({
-  id: '/business/table',
-  path: '/business/table',
-  getParentRoute: () => rootRouteImport,
+  id: '/table',
+  path: '/table',
+  getParentRoute: () => BusinessRouteRoute,
 } as any)
 const BusinessServiceRoute = BusinessServiceRouteImport.update({
-  id: '/business/service',
-  path: '/business/service',
-  getParentRoute: () => rootRouteImport,
+  id: '/service',
+  path: '/service',
+  getParentRoute: () => BusinessRouteRoute,
 } as any)
 const BusinessBookingRoute = BusinessBookingRouteImport.update({
-  id: '/business/booking',
-  path: '/business/booking',
-  getParentRoute: () => rootRouteImport,
+  id: '/booking',
+  path: '/booking',
+  getParentRoute: () => BusinessRouteRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/admin/users',
-  path: '/admin/users',
-  getParentRoute: () => rootRouteImport,
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminServiceRoute = AdminServiceRouteImport.update({
-  id: '/admin/service',
-  path: '/admin/service',
-  getParentRoute: () => rootRouteImport,
+  id: '/service',
+  path: '/service',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminBusinessRoute = AdminBusinessRouteImport.update({
-  id: '/admin/business',
-  path: '/admin/business',
-  getParentRoute: () => rootRouteImport,
+  id: '/business',
+  path: '/business',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
   id: '/(errors)/503',
@@ -163,6 +181,9 @@ const AuthenticatedErrorsErrorRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/business': typeof BusinessRouteRouteWithChildren
+  '/staff': typeof StaffRouteRouteWithChildren
   '/client': typeof ClientRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
@@ -182,13 +203,14 @@ export interface FileRoutesByFullPath {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
-  '/admin': typeof AdminIndexRoute
-  '/business': typeof BusinessIndexRoute
-  '/staff': typeof StaffIndexRoute
+  '/staff/bookings': typeof StaffBookingsRoute
+  '/business/': typeof BusinessIndexRoute
+  '/staff/': typeof StaffIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
 }
 export interface FileRoutesByTo {
+  '/admin': typeof AdminRouteRouteWithChildren
   '/client': typeof ClientRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
@@ -208,7 +230,7 @@ export interface FileRoutesByTo {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
-  '/admin': typeof AdminIndexRoute
+  '/staff/bookings': typeof StaffBookingsRoute
   '/business': typeof BusinessIndexRoute
   '/staff': typeof StaffIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -217,6 +239,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/business': typeof BusinessRouteRouteWithChildren
+  '/staff': typeof StaffRouteRouteWithChildren
   '/client': typeof ClientRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/otp': typeof authOtpRoute
@@ -236,7 +261,7 @@ export interface FileRoutesById {
   '/business/table': typeof BusinessTableRoute
   '/business/users': typeof BusinessUsersRoute
   '/client/profile': typeof ClientProfileRoute
-  '/admin/': typeof AdminIndexRoute
+  '/staff/bookings': typeof StaffBookingsRoute
   '/business/': typeof BusinessIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -245,6 +270,9 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/admin'
+    | '/business'
+    | '/staff'
     | '/client'
     | '/forgot-password'
     | '/otp'
@@ -264,13 +292,14 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
-    | '/admin'
-    | '/business'
-    | '/staff'
+    | '/staff/bookings'
+    | '/business/'
+    | '/staff/'
     | '/errors/$error'
     | '/help-center'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/admin'
     | '/client'
     | '/forgot-password'
     | '/otp'
@@ -290,7 +319,7 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
-    | '/admin'
+    | '/staff/bookings'
     | '/business'
     | '/staff'
     | '/errors/$error'
@@ -298,6 +327,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/admin'
+    | '/business'
+    | '/staff'
     | '/client'
     | '/(auth)/forgot-password'
     | '/(auth)/otp'
@@ -317,7 +349,7 @@ export interface FileRouteTypes {
     | '/business/table'
     | '/business/users'
     | '/client/profile'
-    | '/admin/'
+    | '/staff/bookings'
     | '/business/'
     | '/staff/'
     | '/_authenticated/errors/$error'
@@ -326,6 +358,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  BusinessRouteRoute: typeof BusinessRouteRouteWithChildren
+  StaffRouteRoute: typeof StaffRouteRouteWithChildren
   ClientRoute: typeof ClientRouteWithChildren
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authOtpRoute: typeof authOtpRoute
@@ -337,16 +372,6 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
-  AdminBusinessRoute: typeof AdminBusinessRoute
-  AdminServiceRoute: typeof AdminServiceRoute
-  AdminUsersRoute: typeof AdminUsersRoute
-  BusinessBookingRoute: typeof BusinessBookingRoute
-  BusinessServiceRoute: typeof BusinessServiceRoute
-  BusinessTableRoute: typeof BusinessTableRoute
-  BusinessUsersRoute: typeof BusinessUsersRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-  BusinessIndexRoute: typeof BusinessIndexRoute
-  StaffIndexRoute: typeof StaffIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -358,6 +383,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business': {
+      id: '/business'
+      path: '/business'
+      fullPath: '/business'
+      preLoaderRoute: typeof BusinessRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -367,24 +413,24 @@ declare module '@tanstack/react-router' {
     }
     '/staff/': {
       id: '/staff/'
-      path: '/staff'
-      fullPath: '/staff'
+      path: '/'
+      fullPath: '/staff/'
       preLoaderRoute: typeof StaffIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof StaffRouteRoute
     }
     '/business/': {
       id: '/business/'
-      path: '/business'
-      fullPath: '/business'
+      path: '/'
+      fullPath: '/business/'
       preLoaderRoute: typeof BusinessIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof BusinessRouteRoute
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
+    '/staff/bookings': {
+      id: '/staff/bookings'
+      path: '/bookings'
+      fullPath: '/staff/bookings'
+      preLoaderRoute: typeof StaffBookingsRouteImport
+      parentRoute: typeof StaffRouteRoute
     }
     '/client/profile': {
       id: '/client/profile'
@@ -395,52 +441,52 @@ declare module '@tanstack/react-router' {
     }
     '/business/users': {
       id: '/business/users'
-      path: '/business/users'
+      path: '/users'
       fullPath: '/business/users'
       preLoaderRoute: typeof BusinessUsersRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof BusinessRouteRoute
     }
     '/business/table': {
       id: '/business/table'
-      path: '/business/table'
+      path: '/table'
       fullPath: '/business/table'
       preLoaderRoute: typeof BusinessTableRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof BusinessRouteRoute
     }
     '/business/service': {
       id: '/business/service'
-      path: '/business/service'
+      path: '/service'
       fullPath: '/business/service'
       preLoaderRoute: typeof BusinessServiceRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof BusinessRouteRoute
     }
     '/business/booking': {
       id: '/business/booking'
-      path: '/business/booking'
+      path: '/booking'
       fullPath: '/business/booking'
       preLoaderRoute: typeof BusinessBookingRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof BusinessRouteRoute
     }
     '/admin/users': {
       id: '/admin/users'
-      path: '/admin/users'
+      path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/service': {
       id: '/admin/service'
-      path: '/admin/service'
+      path: '/service'
       fullPath: '/admin/service'
       preLoaderRoute: typeof AdminServiceRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/business': {
       id: '/admin/business'
-      path: '/admin/business'
+      path: '/business'
       fullPath: '/admin/business'
       preLoaderRoute: typeof AdminBusinessRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/(errors)/503': {
       id: '/(errors)/503'
@@ -542,6 +588,56 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AdminRouteRouteChildren {
+  AdminBusinessRoute: typeof AdminBusinessRoute
+  AdminServiceRoute: typeof AdminServiceRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminBusinessRoute: AdminBusinessRoute,
+  AdminServiceRoute: AdminServiceRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
+interface BusinessRouteRouteChildren {
+  BusinessBookingRoute: typeof BusinessBookingRoute
+  BusinessServiceRoute: typeof BusinessServiceRoute
+  BusinessTableRoute: typeof BusinessTableRoute
+  BusinessUsersRoute: typeof BusinessUsersRoute
+  BusinessIndexRoute: typeof BusinessIndexRoute
+}
+
+const BusinessRouteRouteChildren: BusinessRouteRouteChildren = {
+  BusinessBookingRoute: BusinessBookingRoute,
+  BusinessServiceRoute: BusinessServiceRoute,
+  BusinessTableRoute: BusinessTableRoute,
+  BusinessUsersRoute: BusinessUsersRoute,
+  BusinessIndexRoute: BusinessIndexRoute,
+}
+
+const BusinessRouteRouteWithChildren = BusinessRouteRoute._addFileChildren(
+  BusinessRouteRouteChildren,
+)
+
+interface StaffRouteRouteChildren {
+  StaffBookingsRoute: typeof StaffBookingsRoute
+  StaffIndexRoute: typeof StaffIndexRoute
+}
+
+const StaffRouteRouteChildren: StaffRouteRouteChildren = {
+  StaffBookingsRoute: StaffBookingsRoute,
+  StaffIndexRoute: StaffIndexRoute,
+}
+
+const StaffRouteRouteWithChildren = StaffRouteRoute._addFileChildren(
+  StaffRouteRouteChildren,
+)
+
 interface ClientRouteChildren {
   ClientProfileRoute: typeof ClientProfileRoute
 }
@@ -555,6 +651,9 @@ const ClientRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  BusinessRouteRoute: BusinessRouteRouteWithChildren,
+  StaffRouteRoute: StaffRouteRouteWithChildren,
   ClientRoute: ClientRouteWithChildren,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authOtpRoute: authOtpRoute,
@@ -566,16 +665,6 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
-  AdminBusinessRoute: AdminBusinessRoute,
-  AdminServiceRoute: AdminServiceRoute,
-  AdminUsersRoute: AdminUsersRoute,
-  BusinessBookingRoute: BusinessBookingRoute,
-  BusinessServiceRoute: BusinessServiceRoute,
-  BusinessTableRoute: BusinessTableRoute,
-  BusinessUsersRoute: BusinessUsersRoute,
-  AdminIndexRoute: AdminIndexRoute,
-  BusinessIndexRoute: BusinessIndexRoute,
-  StaffIndexRoute: StaffIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

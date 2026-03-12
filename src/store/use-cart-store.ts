@@ -19,6 +19,7 @@ export interface CartItem {
   qty: number
   options: CartOptions
   priceSnapshot: number
+  description?: string
   service: any // Keep full service object for UI convenience
 }
 
@@ -27,6 +28,7 @@ interface CartState {
   addToCart: (service: any, options: CartOptions) => void
   removeFromCart: (itemId: string) => void
   updateQty: (itemId: string, delta: number) => void
+  setItemDescription: (itemId: string, description: string) => void
   clearCart: () => void
   syncTotals: () => void
   totalPrice: number
@@ -126,6 +128,14 @@ export const useCartStore = create<CartState>()(
           totalPrice: newItems.reduce((s, i) => s + i.priceSnapshot * i.qty, 0),
           totalItems: newItems.reduce((s, i) => s + i.qty, 0),
         })
+      },
+
+      setItemDescription: (itemId, description) => {
+        const newItems = get().items.map((item) =>
+          item.id === itemId ? { ...item, description } : item
+        )
+
+        set({ items: newItems })
       },
 
       clearCart: () => {

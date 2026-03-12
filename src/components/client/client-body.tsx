@@ -106,7 +106,6 @@ export const ClientBody = () => {
   if (showKarzinka) {
     return (
       <Karzinka
-        services={services}
         onBack={handleBackFromKarzinka}
         onOrder={handleOrder}
       />

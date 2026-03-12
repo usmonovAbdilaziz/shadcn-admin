@@ -1,33 +1,33 @@
-import { LayoutDashboard,  } from "lucide-react";
-import  { type SidebarData } from "../types";
+import { BookIcon, LayoutDashboard } from 'lucide-react'
+import { type SidebarData } from '../types'
 
-export const sidebarStaffData:SidebarData = {
-    user: {
+export const sidebarStaffData: SidebarData = {
+  user: {
     name: 'John Doe',
     email: 'john.doe@example.com',
     avatar: 'https://i.pravatar.cc/150?img=3',
+  },
+  teams: [
+    {
+      name: 'Team Alpha',
+      logo: 'https://i.pravatar.cc/150?img=1',
+      plan: 'Pro',
     },
-    teams:[
-        {
-        name: 'Team Alpha',
-        logo: 'https://i.pravatar.cc/150?img=1',
-        plan: 'Pro',
-        }
-    ],
-    navGroups: [
+  ],
+  navGroups: [
     {
       title: 'General',
       items: [
         {
           title: 'Dashboard',
-          url: '/staff/staff-dashboard',
+          url: '/staff',
           icon: LayoutDashboard,
         },
-        // {
-        //   title: 'Staff',
-        //   url: '/staff/users',
-        //   icon: Users,
-        // },
+        {
+          title: 'Bookings',
+          url: '/staff/bookings',
+          icon: BookIcon,
+        },
         // {
         //   title: 'Service',
         //   url: '/staff/service',
