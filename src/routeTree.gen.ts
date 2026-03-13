@@ -16,6 +16,7 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as BusinessIndexRouteImport } from './routes/business/index'
+import { Route as StaffDashboardRouteImport } from './routes/staff/dashboard'
 import { Route as StaffBookingsRouteImport } from './routes/staff/bookings'
 import { Route as StaffPositionRouteImport } from './routes/staff/$position'
 import { Route as ClientProfileRouteImport } from './routes/client/profile'
@@ -72,6 +73,11 @@ const BusinessIndexRoute = BusinessIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BusinessRouteRoute,
+} as any)
+const StaffDashboardRoute = StaffDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => StaffRouteRoute,
 } as any)
 const StaffBookingsRoute = StaffBookingsRouteImport.update({
   id: '/bookings',
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/client/profile': typeof ClientProfileRoute
   '/staff/$position': typeof StaffPositionRoute
   '/staff/bookings': typeof StaffBookingsRoute
+  '/staff/dashboard': typeof StaffDashboardRoute
   '/business/': typeof BusinessIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/client/profile': typeof ClientProfileRoute
   '/staff/$position': typeof StaffPositionRoute
   '/staff/bookings': typeof StaffBookingsRoute
+  '/staff/dashboard': typeof StaffDashboardRoute
   '/business': typeof BusinessIndexRoute
   '/staff': typeof StaffIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/client/profile': typeof ClientProfileRoute
   '/staff/$position': typeof StaffPositionRoute
   '/staff/bookings': typeof StaffBookingsRoute
+  '/staff/dashboard': typeof StaffDashboardRoute
   '/business/': typeof BusinessIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/client/profile'
     | '/staff/$position'
     | '/staff/bookings'
+    | '/staff/dashboard'
     | '/business/'
     | '/staff/'
     | '/errors/$error'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/client/profile'
     | '/staff/$position'
     | '/staff/bookings'
+    | '/staff/dashboard'
     | '/business'
     | '/staff'
     | '/errors/$error'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/client/profile'
     | '/staff/$position'
     | '/staff/bookings'
+    | '/staff/dashboard'
     | '/business/'
     | '/staff/'
     | '/_authenticated/errors/$error'
@@ -436,6 +448,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/business/'
       preLoaderRoute: typeof BusinessIndexRouteImport
       parentRoute: typeof BusinessRouteRoute
+    }
+    '/staff/dashboard': {
+      id: '/staff/dashboard'
+      path: '/dashboard'
+      fullPath: '/staff/dashboard'
+      preLoaderRoute: typeof StaffDashboardRouteImport
+      parentRoute: typeof StaffRouteRoute
     }
     '/staff/bookings': {
       id: '/staff/bookings'
@@ -646,12 +665,14 @@ const BusinessRouteRouteWithChildren = BusinessRouteRoute._addFileChildren(
 interface StaffRouteRouteChildren {
   StaffPositionRoute: typeof StaffPositionRoute
   StaffBookingsRoute: typeof StaffBookingsRoute
+  StaffDashboardRoute: typeof StaffDashboardRoute
   StaffIndexRoute: typeof StaffIndexRoute
 }
 
 const StaffRouteRouteChildren: StaffRouteRouteChildren = {
   StaffPositionRoute: StaffPositionRoute,
   StaffBookingsRoute: StaffBookingsRoute,
+  StaffDashboardRoute: StaffDashboardRoute,
   StaffIndexRoute: StaffIndexRoute,
 }
 

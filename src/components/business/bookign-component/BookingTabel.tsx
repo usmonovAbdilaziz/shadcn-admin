@@ -23,6 +23,18 @@ import {
   getBookingConfirmerSummary,
   getBookingConfirmerTypeLabel,
 } from '@/lib/booking-confirmer'
+import {
+  canConfirmBookingApproval,
+  canMarkBookingApprovalPaid,
+  getBookingApprovalStage,
+  getBookingApprovalStatusLabel,
+  getBookingApprovalStatusTone,
+} from '@/lib/booking-approval-status'
+import {
+  getBookingPaymentStatusLabel,
+  getBookingPaymentStatusTone,
+  isBookingPaid,
+} from '@/lib/booking-payment-status'
 import { cn } from '@/lib/utils'
 
 type BookingItem = {
@@ -48,6 +60,7 @@ type Booking = {
   createdAt: string
   updatedAt: string
   status: string
+  priceStatus?: string | null
   price?: number | string | null
   notes?: string | null
   businessId?: string | null
@@ -102,34 +115,17 @@ type BookingTableProps = {
   isUpdating?: boolean
 }
 
-const statusLabel = (s: string) =>
-  s === 'CONFIRMED'
-    ? 'Tasdiqlangan'
-    : s === 'PENDING'
-      ? 'Kutilmoqda'
-      : s === 'CANCELLED'
-        ? 'Bekor qilingan'
-        : s === 'COMPLETED'
-          ? 'Yakunlangan'
-          : s
-
-function StatusBadge({ status }: { status: string }) {
-  const isConfirmed = status === 'CONFIRMED'
-  const isPending = status === 'PENDING'
-  const isCancelled = status === 'CANCELLED'
-  const isCompleted = status === 'COMPLETED'
-
+function StatusBadge({
+  stage,
+}: {
+  stage: ReturnType<typeof getBookingApprovalStage>
+}) {
   return (
     <Badge
-      variant={isConfirmed ? 'default' : 'secondary'}
-      className={[
-        isConfirmed ? 'bg-emerald-500 hover:bg-emerald-600' : '',
-        isPending ? 'bg-amber-500 text-white hover:bg-amber-600' : '',
-        isCancelled ? 'bg-rose-500 text-white hover:bg-rose-600' : '',
-        isCompleted ? 'bg-sky-500 text-white hover:bg-sky-600' : '',
-      ].join(' ')}
+      variant='outline'
+      className={cn('border', getBookingApprovalStatusTone(stage))}
     >
-      {statusLabel(status)}
+      {getBookingApprovalStatusLabel(stage)}
     </Badge>
   )
 }
@@ -141,6 +137,17 @@ function ProgressBadge({ status }: { status?: string | null }) {
       className={cn('border', getBookingProgressTone(status))}
     >
       {getBookingProgressLabel(status)}
+    </Badge>
+  )
+}
+
+function PaymentBadge({ status }: { status?: string | null }) {
+  return (
+    <Badge
+      variant='outline'
+      className={cn('border', getBookingPaymentStatusTone(status))}
+    >
+      {getBookingPaymentStatusLabel(status)}
     </Badge>
   )
 }
@@ -276,15 +283,14 @@ function ExpandRow({
 }) {
   const confirmerSummary = getBookingConfirmerSummary(booking)
   const confirmerTypeLabel = getBookingConfirmerTypeLabel(booking.confirmedByType)
-  const status = String(booking.status || '').toUpperCase()
   const canAct = Boolean(canUpdateStatus && onStatusChange)
   const actions: Array<{ label: string; status: string }> = []
 
-  if (status === 'PENDING') {
+  if (canConfirmBookingApproval(booking)) {
     actions.push({ label: 'Tasdiqlash', status: 'CONFIRMED' })
     actions.push({ label: 'Bekor qilish', status: 'CANCELLED' })
-  } else if (status === 'CONFIRMED') {
-    actions.push({ label: 'Tasdiqlandi', status: 'COMPLETED' })
+  } else if (canMarkBookingApprovalPaid(booking)) {
+    actions.push({ label: "To'landi", status: 'COMPLETED' })
     actions.push({ label: 'Bekor qilish', status: 'CANCELLED' })
   }
 
@@ -341,6 +347,10 @@ function ExpandRow({
           value={<ProgressBadge status={booking.progressStatus} />}
         />
         <KeyValue
+          label="to'lov"
+          value={<PaymentBadge status={booking.priceStatus} />}
+        />
+        <KeyValue
           label='tayyorlash muddati'
           value={
             booking.estimatedDurationMinutes
@@ -395,6 +405,10 @@ function ExpandRow({
                 .map((role) => getResponsibleRoleLabel(role) || role)
                 .join(', ')
             : '-'}
+        />
+        <KeyValue
+          label="to'lov holati"
+          value={isBookingPaid(booking.priceStatus) ? "To'langan" : "To'lov kutilmoqda"}
         />
         <KeyValue label='notes' value={booking.notes ?? '-'} />
       </div>
@@ -528,8 +542,9 @@ export function BookingTable({
 
                       <TableCell className='py-2'>
                         <div className='space-y-1'>
-                          <StatusBadge status={booking.status} />
+                          <StatusBadge stage={getBookingApprovalStage(booking)} />
                           <ProgressBadge status={booking.progressStatus} />
+                          <PaymentBadge status={booking.priceStatus} />
                           {booking.isDelayedPreparation ? (
                             <div className='text-xs text-rose-300'>
                               Tayyorlash kechikdi

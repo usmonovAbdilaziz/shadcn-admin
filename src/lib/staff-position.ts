@@ -32,6 +32,9 @@ export type StaffRouteTarget =
       to: '/staff'
     }
   | {
+      to: '/staff/dashboard'
+    }
+  | {
       to: '/staff/$position'
       params: {
         position: StaffPositionSlug
@@ -111,10 +114,7 @@ export const getStaffRouteTarget = (
     return { to: '/staff' }
   }
 
-  return {
-    to: '/staff/$position',
-    params: { position: slug },
-  }
+  return { to: '/staff/dashboard' }
 }
 
 export const getStaffPositionBySlug = (

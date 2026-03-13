@@ -13,6 +13,8 @@ export const useGetStaffBookings = (
     options?: {
         search?: string
         status?: string
+        priceStatus?: string
+        progressStatus?: string
         dateFrom?: string
         dateTo?: string
         pagination?: { page: number; size: number }

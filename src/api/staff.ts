@@ -17,6 +17,8 @@ export const staffBookings = async (
   options?: {
     search?: string
     status?: string
+    priceStatus?: string
+    progressStatus?: string
     dateFrom?: string
     dateTo?: string
     pagination?: { page: number; size: number }
@@ -25,6 +27,12 @@ export const staffBookings = async (
   const params = new URLSearchParams({ type: position })
   if (options?.status) {
     params.append('status', options.status)
+  }
+  if (options?.priceStatus) {
+    params.append('priceStatus', options.priceStatus)
+  }
+  if (options?.progressStatus) {
+    params.append('progressStatus', options.progressStatus)
   }
   if (options?.dateFrom) {
     params.append('dateFrom', options.dateFrom)

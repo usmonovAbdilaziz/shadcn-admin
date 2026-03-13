@@ -18,29 +18,66 @@ import {
   useBookingRealtimeInvalidation,
   useBusinessBookingRoom,
 } from '@/hooks/booking-realtime'
+import { getBookingApprovalStage } from '@/lib/booking-approval-status'
 import { normalizeStaffPosition } from '@/lib/staff-position'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 const APPROVAL_SECTIONS = [
   {
-    status: 'PENDING',
+    key: 'PENDING',
     title: 'Kutilmoqda',
     empty: 'Kutilayotgan buyurtma yo`q',
+    filters: {
+      status: 'PENDING',
+    },
   },
   {
-    status: 'CONFIRMED',
-    title: 'Tasdiqlanmoqda',
-    empty: 'Tasdiqlanayotgan buyurtma yo`q',
-  },
-  {
-    status: 'COMPLETED',
+    key: 'CONFIRMED',
     title: 'Tasdiqlangan',
     empty: 'Tasdiqlangan buyurtma yo`q',
+    filters: {
+      status: 'CONFIRMED',
+      priceStatus: 'PENDING',
+    },
+  },
+  {
+    key: 'PAID',
+    title: "To'landi",
+    empty: "To'langan buyurtma yo`q",
+    filters: {
+      priceStatus: 'COMPLETED',
+    },
+  },
+  {
+    key: 'CANCELLED',
+    title: 'Bekor qilingan',
+    empty: 'Bekor qilingan buyurtma yo`q',
+    filters: {
+      status: 'CANCELLED',
+    },
   },
 ] as const
 
-type ApprovalStatus = (typeof APPROVAL_SECTIONS)[number]['status']
+const CASHIER_SECTIONS = [
+  {
+    key: 'PENDING',
+    title: "To'lov kutilmoqda",
+    empty: "To'lov kutilayotgan buyurtma yo`q",
+  },
+  {
+    key: 'PAID',
+    title: "To'landi",
+    empty: "To'langan buyurtma yo`q",
+  },
+  {
+    key: 'CANCELLED',
+    title: 'Bekor qilingan',
+    empty: 'Bekor qilingan buyurtma yo`q',
+  },
+] as const
+
+type ApprovalStatus = (typeof APPROVAL_SECTIONS)[number]['key']
 
 type StaffUser = {
   id?: string | null
@@ -55,6 +92,7 @@ type StaffUser = {
 type BookingLifecycle = {
   id: string
   status: string
+  priceStatus?: string | null
   progressStatus?: string | null
   price?: string | number | null
   items?: Array<{
@@ -90,19 +128,6 @@ const getDayRange = (dateValue: string) => {
     dateTo: end.toISOString(),
   }
 }
-
-const formatMoney = (value: number) =>
-  `${value.toLocaleString('uz-UZ')} so'm`
-
-const getBookingTotal = (booking: BookingLifecycle) =>
-  Number(
-    booking.price ??
-      booking.items?.reduce(
-        (sum, item) => sum + Number(item.priceSnapshot || 0) * Number(item.qty || 0),
-        0
-      ) ??
-      0
-  ) || 0
 
 const getStoredStaff = (): StaffUser => {
   try {
@@ -215,24 +240,46 @@ export const StaffBookings = () => {
   const deferredSearch = useDeferredValue(searchId)
   const search = deferredSearch.trim()
   const dayRange = getDayRange(selectedDate)
-  const effectiveApprovalStatus: ApprovalStatus =
-    search.length > 0 ? 'PENDING' : approvalTab
+  const approvalSections = isCashier ? CASHIER_SECTIONS : APPROVAL_SECTIONS
+  const activeApprovalSection =
+    approvalSections.find((section) => section.key === approvalTab) ??
+    approvalSections[0]
 
   const approvalQuery = useGetStaffBookings(isCashier ? position : '', {
     search,
-    status: effectiveApprovalStatus,
     ...dayRange,
+    ...(isCashier
+      ? {
+          progressStatus:
+            activeApprovalSection.key === 'CANCELLED'
+              ? 'CANCELLED'
+              : 'DELIVERED',
+        }
+      : {}),
   })
   const progressQuery = useGetStaffBookings(!isCashier ? position : '', {
     search,
     ...dayRange,
   })
 
-  const approvalBookings = (approvalQuery.data?.data?.items || []) as ApprovalBooking[]
+  const rawApprovalBookings = (approvalQuery.data?.data?.items || []) as ApprovalBooking[]
+  const approvalBookings = rawApprovalBookings.filter((booking) => {
+    const stage = getBookingApprovalStage(booking)
+    const progressStatus = String(booking.progressStatus || '').toUpperCase()
+    const isDelivered = progressStatus === 'DELIVERED'
+    const isCancelled = progressStatus === 'CANCELLED'
+
+    if (search.length > 0) {
+      return stage === 'PENDING' && isDelivered
+    }
+
+    if (activeApprovalSection.key === 'CANCELLED') {
+      return stage === 'CANCELLED' || isCancelled
+    }
+
+    return stage === activeApprovalSection.key && isDelivered
+  })
   const progressBookings = (progressQuery.data?.data?.items || []) as BookingProgressCard[]
-  const activeApprovalSection =
-    APPROVAL_SECTIONS.find((section) => section.status === effectiveApprovalStatus) ??
-    APPROVAL_SECTIONS[0]
   const isLoading = isCashier ? approvalQuery.isLoading : progressQuery.isLoading
   const hasError = isCashier ? approvalQuery.error : progressQuery.error
   const isMutating =
@@ -312,6 +359,17 @@ export const StaffBookings = () => {
             (booking) =>
               Boolean(booking.isDelayedPreparation) ||
               Boolean(booking.isDelayedDeliveryClaim)
+          ),
+        },
+        {
+          key: 'payment',
+          label: "To'lov kutilmoqda",
+          bookings: progressBookings.filter(
+            (booking) =>
+              String(booking.progressStatus || '').toUpperCase() ===
+                'DELIVERED' &&
+              String(booking.priceStatus || '').toUpperCase() !== 'COMPLETED' &&
+              String(booking.status || '').toUpperCase() !== 'CANCELLED'
           ),
         },
       ]
@@ -396,23 +454,6 @@ export const StaffBookings = () => {
   const activeProgressSection =
     progressSections.find((section) => section.key === progressTab) ??
     progressSections[0]
-  const summaryBookings: BookingLifecycle[] = isCashier
-    ? approvalBookings
-    : (progressBookings as BookingLifecycle[])
-  const archiveBookings: BookingLifecycle[] = isPreparationRole
-    ? (progressBookings.filter((booking) =>
-        isArchivedBooking(booking)
-      ) as BookingLifecycle[])
-    : []
-  const summaryTotalAmount = summaryBookings.reduce(
-    (sum: number, booking: BookingLifecycle) => sum + getBookingTotal(booking),
-    0
-  )
-  const archiveTotalAmount = archiveBookings.reduce(
-    (sum: number, booking: BookingLifecycle) => sum + getBookingTotal(booking),
-    0
-  )
-  const summaryLabel = selectedDate ? 'Kunlik jami' : 'Jami summa'
 
   return (
     <div className='space-y-6 p-4'>
@@ -447,7 +488,8 @@ export const StaffBookings = () => {
         </div>
         {isCashier && search ? (
           <p className='text-sm text-muted-foreground'>
-            Qidiruv natijasida faqat kutilayotgan buyurtmalar ko'rsatiladi.
+            Qidiruv natijasida faqat yetkazilgan va to'lovi kutilayotgan
+            buyurtmalar ko'rsatiladi.
           </p>
         ) : null}
       </div>
@@ -457,55 +499,20 @@ export const StaffBookings = () => {
         <p className='text-destructive'>Error loading bookings</p>
       ) : null}
 
-      {!isLoading && !hasError ? (
-        <div
-          className={cn(
-            'grid gap-3',
-            isPreparationRole ? 'lg:grid-cols-3' : 'sm:grid-cols-2'
-          )}
-        >
-          <div className='rounded-xl border border-border/60 bg-card/60 p-4'>
-            <div className='text-sm text-muted-foreground'>{summaryLabel}</div>
-            <div className='mt-2 text-2xl font-bold'>
-              {formatMoney(summaryTotalAmount)}
-            </div>
-            <div className='mt-1 text-xs text-muted-foreground'>
-              {selectedDate || 'Barcha sanalar'}
-            </div>
-          </div>
-          <div className='rounded-xl border border-border/60 bg-card/60 p-4'>
-            <div className='text-sm text-muted-foreground'>Jami bookinglar</div>
-            <div className='mt-2 text-2xl font-bold'>{summaryBookings.length}</div>
-            <div className='mt-1 text-xs text-muted-foreground'>
-              Tanlangan sana va qidiruv bo`yicha
-            </div>
-          </div>
-          {isPreparationRole ? (
-            <div className='rounded-xl border border-border/60 bg-card/60 p-4'>
-              <div className='text-sm text-muted-foreground'>Arxiv</div>
-              <div className='mt-2 text-2xl font-bold'>
-                {archiveBookings.length} ta
-              </div>
-              <div className='mt-1 text-xs text-muted-foreground'>
-                {formatMoney(archiveTotalAmount)}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+    
 
       {isCashier && !isLoading && !hasError ? (
         <Tabs
-          value={effectiveApprovalStatus}
+          value={activeApprovalSection.key}
           onValueChange={(value) => setApprovalTab(value as ApprovalStatus)}
           className='rounded-xl border border-border/60 bg-card/60 p-4'
         >
-          <TabsList className='grid h-auto w-full grid-cols-3 gap-2 bg-transparent p-0'>
-            {APPROVAL_SECTIONS.map((section) => (
+          <TabsList className='grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 lg:grid-cols-3'>
+            {approvalSections.map((section) => (
               <TabsTrigger
-                key={section.status}
-                value={section.status}
-                disabled={Boolean(search) && section.status !== 'PENDING'}
+                key={section.key}
+                value={section.key}
+                disabled={Boolean(search) && section.key !== 'PENDING'}
                 className='border border-border/60 bg-muted/20 py-2 data-[state=active]:border-primary data-[state=active]:bg-background'
               >
                 {section.title}
@@ -513,11 +520,11 @@ export const StaffBookings = () => {
             ))}
           </TabsList>
 
-          <TabsContent value={effectiveApprovalStatus} className='mt-4 space-y-4'>
+          <TabsContent value={activeApprovalSection.key} className='mt-4 space-y-4'>
             <div>
               <h2 className='text-lg font-semibold'>{activeApprovalSection.title}</h2>
               <p className='text-sm text-muted-foreground'>
-                {approvalBookings.length} ta booking
+                {approvalBookings.length} ta
               </p>
             </div>
 
@@ -527,6 +534,7 @@ export const StaffBookings = () => {
                 canUpdateStatus
                 onStatusChange={handleStatusChange}
                 isUpdating={isMutating}
+                showProgressAsPrimaryStatus
               />
             ) : (
               <p className='text-sm text-muted-foreground'>
@@ -565,7 +573,7 @@ export const StaffBookings = () => {
               <div>
                 <h2 className='text-lg font-semibold'>{section.label}</h2>
                 <p className='text-sm text-muted-foreground'>
-                  {section.bookings.length} ta booking
+                  {section.bookings.length} ta
                 </p>
               </div>
 

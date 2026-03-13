@@ -20,7 +20,7 @@ export const sidebarStaffData: SidebarData = {
       items: [
         {
           title: 'Dashboard',
-          url: '/staff',
+          url: '/staff/dashboard',
           icon: LayoutDashboard,
         },
         {

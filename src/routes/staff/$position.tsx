@@ -1,4 +1,3 @@
-import { StaffBookings } from '@/components/staff/bookings'
 import {
   getStaffPositionBySlug,
   getStaffRouteTarget,
@@ -15,10 +14,7 @@ export const Route = createFileRoute('/staff/$position')({
     if (!routePosition || !userPosition || routePosition !== userPosition) {
       throw redirect(getStaffRouteTarget(userPosition))
     }
-  },
-  component: StaffPositionPage,
-})
 
-function StaffPositionPage() {
-  return <StaffBookings />
-}
+    throw redirect({ to: '/staff/dashboard' })
+  },
+})

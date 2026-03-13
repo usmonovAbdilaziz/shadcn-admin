@@ -9,6 +9,10 @@ import {
   getBookingProgressLabel,
   getBookingProgressTone,
 } from '@/lib/booking-progress'
+import {
+  getBookingPaymentStatusLabel,
+  getBookingPaymentStatusTone,
+} from '@/lib/booking-payment-status'
 import { cn } from '@/lib/utils'
 import { useClientStore } from '@/store/use-client-store'
 import {
@@ -38,6 +42,7 @@ type ProfileBooking = {
   createdAt: string
   price?: number | string | null
   status: string
+  priceStatus?: string | null
   progressStatus?: string | null
   estimatedDurationMinutes?: number
   estimatedReadyAt?: string | null
@@ -285,6 +290,15 @@ export const ClientProfile = () => {
                           >
                             {getBookingProgressLabel(order.progressStatus || order.status)}
                           </Badge>
+                          <Badge
+                            variant='outline'
+                            className={cn(
+                              'border',
+                              getBookingPaymentStatusTone(order.priceStatus)
+                            )}
+                          >
+                            {getBookingPaymentStatusLabel(order.priceStatus)}
+                          </Badge>
 
                           <div className='text-lg font-bold'>{total} so'm</div>
                         </div>
@@ -320,6 +334,12 @@ export const ClientProfile = () => {
                         </div>
                         <div className='mt-3 text-sm text-muted-foreground'>
                           {getProgressHint(order)}
+                        </div>
+                        <div className='mt-2 text-sm text-muted-foreground'>
+                          To'lov holati:{' '}
+                          <span className='font-medium text-foreground'>
+                            {getBookingPaymentStatusLabel(order.priceStatus)}
+                          </span>
                         </div>
                       </div>
 

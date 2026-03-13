@@ -6,10 +6,25 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import {
+  canConfirmBookingApproval,
+  canMarkBookingApprovalPaid,
+  getBookingApprovalStage,
+  getBookingApprovalStatusLabel,
+  getBookingApprovalStatusTone,
+} from '@/lib/booking-approval-status'
+import {
+  getBookingProgressLabel,
+  getBookingProgressTone,
+} from '@/lib/booking-progress'
+import {
+  getBookingPaymentStatusLabel,
+  getBookingPaymentStatusTone,
+  isBookingPaid,
+} from '@/lib/booking-payment-status'
+import {
   getBookingConfirmerSummary,
   getBookingConfirmerTypeLabel,
 } from '@/lib/booking-confirmer'
-import { getBookingStatusLabel, getBookingStatusTone } from '@/lib/booking-status'
 import { cn } from '@/lib/utils'
 
 type BookingItem = {
@@ -27,6 +42,8 @@ type BookingItem = {
 export type Booking = {
   id: string
   status: string
+  priceStatus?: string | null
+  progressStatus?: string | null
   createdAt?: string
   notes?: string
   price?: string
@@ -59,11 +76,13 @@ export function BookingList({
   canUpdateStatus,
   onStatusChange,
   isUpdating,
+  showProgressAsPrimaryStatus,
 }: {
   bookings: Booking[]
   canUpdateStatus?: boolean
   onStatusChange?: (id: string, status: string) => void | Promise<void>
   isUpdating?: boolean
+  showProgressAsPrimaryStatus?: boolean
 }) {
   return (
     <Accordion type='single' collapsible className='w-full space-y-3'>
@@ -74,19 +93,22 @@ export function BookingList({
             0
           ) ?? 0
         const total = booking.price ?? itemsTotal ?? booking.service?.price ?? 0
-        const status = String(booking.status || '').toUpperCase()
+        const approvalStage = getBookingApprovalStage(booking)
         const canAct = Boolean(canUpdateStatus && onStatusChange)
         const confirmerSummary = getBookingConfirmerSummary(booking)
         const confirmerTypeLabel = getBookingConfirmerTypeLabel(
           booking.confirmedByType
         )
+        const primaryStatus = showProgressAsPrimaryStatus
+          ? booking.progressStatus || booking.status
+          : approvalStage
 
         const actions: Array<{ label: string; status: string }> = []
-        if (status === 'PENDING') {
+        if (canConfirmBookingApproval(booking)) {
           actions.push({ label: 'Tasdiqlash', status: 'CONFIRMED' })
           actions.push({ label: 'Bekor qilish', status: 'CANCELLED' })
-        } else if (status === 'CONFIRMED') {
-          actions.push({ label: 'Tasdiqlandi', status: 'COMPLETED' })
+        } else if (canMarkBookingApprovalPaid(booking)) {
+          actions.push({ label: "To'landi", status: 'COMPLETED' })
           actions.push({ label: 'Bekor qilish', status: 'CANCELLED' })
         }
 
@@ -108,10 +130,22 @@ export function BookingList({
                   <span
                     className={cn(
                       'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                      getBookingStatusTone(booking.status)
+                      showProgressAsPrimaryStatus
+                        ? getBookingProgressTone(primaryStatus)
+                        : getBookingApprovalStatusTone(approvalStage)
                     )}
                   >
-                    {getBookingStatusLabel(booking.status)}
+                    {showProgressAsPrimaryStatus
+                      ? getBookingProgressLabel(primaryStatus)
+                      : getBookingApprovalStatusLabel(approvalStage)}
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+                      getBookingPaymentStatusTone(booking.priceStatus)
+                    )}
+                  >
+                    {getBookingPaymentStatusLabel(booking.priceStatus)}
                   </span>
                   {confirmerSummary ? (
                     <span className='max-w-[220px] truncate text-[11px] text-muted-foreground'>
@@ -190,6 +224,11 @@ export function BookingList({
                           {dayjs(booking.confirmedAt).format('YYYY-MM-DD HH:mm')}
                         </div>
                       ) : null}
+                      <div className='mt-2 text-xs text-muted-foreground'>
+                        {isBookingPaid(booking.priceStatus)
+                          ? "To'lov yopilgan"
+                          : "To'lov hali yopilmagan"}
+                      </div>
                     </div>
                   ) : null}
                 </div>

@@ -17,6 +17,16 @@ import {
   getBookingProgressTone,
   getResponsibleRoleLabel,
 } from '@/lib/booking-progress'
+import {
+  canConfirmBookingApproval,
+  canMarkBookingApprovalPaid,
+  getBookingApprovalStage,
+} from '@/lib/booking-approval-status'
+import {
+  getBookingPaymentStatusLabel,
+  getBookingPaymentStatusTone,
+  isBookingPaid,
+} from '@/lib/booking-payment-status'
 import { normalizeStaffPosition } from '@/lib/staff-position'
 
 export type BookingProgressItem = {
@@ -35,6 +45,7 @@ export type BookingProgressItem = {
 export type BookingProgressCard = {
   id: string
   status: string
+  priceStatus?: string | null
   progressStatus?: string | null
   createdAt: string
   readyForDeliveryAt?: string | null
@@ -65,19 +76,21 @@ export type BookingProgressCard = {
 const formatMoney = (value?: number | string | null) =>
   `${Number(value ?? 0).toLocaleString('uz-UZ')} so'm`
 
-const getLegacyActions = (status?: string | null) => {
-  const normalized = String(status || '').toUpperCase()
-
-  if (normalized === 'PENDING') {
+const getLegacyActions = (booking: {
+  status?: string | null
+  priceStatus?: string | null
+  progressStatus?: string | null
+}) => {
+  if (canConfirmBookingApproval(booking)) {
     return [
       { label: 'Tasdiqlash', status: 'CONFIRMED' },
       { label: 'Bekor qilish', status: 'CANCELLED' },
     ]
   }
 
-  if (normalized === 'CONFIRMED') {
+  if (canMarkBookingApprovalPaid(booking)) {
     return [
-      { label: 'Qo`lda yakunlash', status: 'COMPLETED' },
+      { label: "To'landi", status: 'COMPLETED' },
       { label: 'Bekor qilish', status: 'CANCELLED' },
     ]
   }
@@ -134,7 +147,8 @@ export function BookingProgressList({
                 0
               )
           ) || 0
-        const legacyActions = isManager ? getLegacyActions(booking.status) : []
+        const approvalStage = getBookingApprovalStage(booking)
+        const legacyActions = isManager ? getLegacyActions(booking) : []
         const canClaimDelivery =
           isDeliveryRole &&
           booking.progressStatus === 'READY_FOR_DELIVERY' &&
@@ -170,6 +184,21 @@ export function BookingProgressList({
                       )}
                     >
                       {getBookingProgressLabel(booking.progressStatus)}
+                    </Badge>
+                    <Badge
+                      variant='outline'
+                      className={cn(
+                        'border',
+                        getBookingApprovalStage(booking) === 'PENDING' &&
+                          canMarkBookingApprovalPaid(booking)
+                          ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+                          : getBookingPaymentStatusTone(booking.priceStatus)
+                      )}
+                    >
+                      {approvalStage === 'PENDING' &&
+                      canMarkBookingApprovalPaid(booking)
+                        ? 'To`lov kutilmoqda'
+                        : getBookingPaymentStatusLabel(booking.priceStatus)}
                     </Badge>
                     {booking.isDelayedPreparation ? (
                       <Badge className='bg-rose-500/15 text-rose-200'>
@@ -243,6 +272,11 @@ export function BookingProgressList({
                       {booking.deliveredByName}
                     </div>
                   ) : null}
+                  <div className='mt-2 text-xs text-muted-foreground'>
+                    {isBookingPaid(booking.priceStatus)
+                      ? "To'lov yopilgan"
+                      : "To'lov hali yopilmagan"}
+                  </div>
                 </div>
               </div>
 
